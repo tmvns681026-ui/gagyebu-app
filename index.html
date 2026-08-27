@@ -667,8 +667,12 @@
       '/contents/' + (githubConfig.path || 'data.json');
   }
 
+  function delay(ms){ return new Promise(function(resolve){ setTimeout(resolve, ms); }); }
+
   function githubGetFile(){
-    return fetch(githubFileUrl() + '?ref=' + (githubConfig.branch || 'main'), { headers: githubHeaders() })
+    // 캐시 때문에 오래된 sha를 받는 일이 없도록, 매번 캐시를 무시하고 새로 요청한다.
+    var url = githubFileUrl() + '?ref=' + (githubConfig.branch || 'main') + '&_=' + Date.now();
+    return fetch(url, { headers: githubHeaders(), cache: 'no-store' })
       .then(function(res){
         if(res.status === 404) return { sha: null, data: null };
         if(!res.ok) return res.text().then(function(t){ throw new Error('조회 실패 (' + res.status + ')'); });
@@ -689,12 +693,15 @@
     return fetch(githubFileUrl(), {
       method: 'PUT',
       headers: Object.assign({ 'Content-Type': 'application/json' }, githubHeaders()),
-      body: JSON.stringify(body)
+      body: JSON.stringify(body),
+      cache: 'no-store'
     }).then(function(res){
       if(!res.ok){
-        var err = new Error('저장 실패 (' + res.status + ')');
-        err.status = res.status;
-        throw err;
+        return res.json().catch(function(){ return null; }).then(function(errBody){
+          var err = new Error('저장 실패 (' + res.status + ')' + (errBody && errBody.message ? ': ' + errBody.message : ''));
+          err.status = res.status;
+          throw err;
+        });
       }
       return res.json();
     });
@@ -723,7 +730,7 @@
         }
         var payload = { entries: entries, recurring: recurring, deposits: deposits, categories: customCats, deletedIds: deletedIds, syncedAt: new Date().toISOString() };
         return githubPutFile(payload, file.sha).catch(function(err){
-          if(err.status === 409 && n < 3) return attempt(n + 1);
+          if(err.status === 409 && n < 5) return delay(350 * n).then(function(){ return attempt(n + 1); });
           throw err;
         });
       });
@@ -1692,3 +1699,4 @@
 </script>
 </body>
 </html>
+
