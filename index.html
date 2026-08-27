@@ -565,6 +565,7 @@
   var CATS_KEY = 'gagyebu_custom_categories_v1';
   var RECURRING_KEY = 'gagyebu_recurring_v1';
   var DEPOSITS_KEY = 'gagyebu_deposits_v1';
+  var DELETED_KEY = 'gagyebu_deleted_ids_v1'; // 삭제된 항목의 id 기록 (동기화 시 되살아나지 않게 하기 위함)
   var GITHUB_CONFIG_KEY = 'gagyebu_github_config_v1'; // 기기별 설정 — 동기화 대상 아님
   var DEPOSIT_CATEGORY = '예금지출';
   var WITHDRAW_CATEGORY = '예금환급';
@@ -585,6 +586,7 @@
   var entries = loadJSON(ENTRIES_KEY, []);
   var recurring = loadJSON(RECURRING_KEY, []);
   var deposits = loadJSON(DEPOSITS_KEY, []);
+  var deletedIds = loadJSON(DELETED_KEY, []); // entries/recurring/deposits 통틀어 삭제된 id 목록 (id는 newId()로 전역 고유)
   var editingDepositId = null;
   var editingEntryId = null;
 
@@ -592,17 +594,33 @@
     try{ var raw = localStorage.getItem(key); return raw ? JSON.parse(raw) : fallback; }
     catch(e){ return fallback; }
   }
-  var SYNC_KEYS = [ENTRIES_KEY, RECURRING_KEY, DEPOSITS_KEY, CATS_KEY];
+  var SYNC_KEYS = [ENTRIES_KEY, RECURRING_KEY, DEPOSITS_KEY, CATS_KEY, DELETED_KEY];
   function saveJSON(key, val){
     try{ localStorage.setItem(key, JSON.stringify(val)); }catch(e){}
     if(SYNC_KEYS.indexOf(key) !== -1) scheduleSync();
   }
 
+  function markDeleted(id){
+    if(deletedIds.indexOf(id) === -1){
+      deletedIds.push(id);
+      saveJSON(DELETED_KEY, deletedIds);
+    }
+  }
+  function unmarkDeleted(id){
+    var idx = deletedIds.indexOf(id);
+    if(idx !== -1){
+      deletedIds.splice(idx, 1);
+      saveJSON(DELETED_KEY, deletedIds);
+    }
+  }
+
   // id 기준으로 두 배열을 합친다. 겹치는 id는 incoming(가져온/원격) 쪽을 우선한다.
+  // deletedIds에 있는 id는 로컬·원격 어느 쪽에 남아있든 결과에서 제외한다 (삭제가 동기화로 되살아나는 것 방지).
   function mergeById(localArr, incomingArr){
     var map = {};
     (localArr || []).forEach(function(item){ if(item && item.id) map[item.id] = item; });
     (incomingArr || []).forEach(function(item){ if(item && item.id) map[item.id] = item; });
+    deletedIds.forEach(function(id){ delete map[id]; });
     return Object.keys(map).map(function(k){ return map[k]; });
   }
   function unionCategoriesInto(target, incoming){
@@ -694,12 +712,16 @@
     function attempt(n){
       return githubGetFile().then(function(file){
         if(file.data){
+          // 삭제 목록부터 먼저 합친다 — 어느 한쪽에서 지웠으면 병합 결과에서도 제외되도록.
+          (file.data.deletedIds || []).forEach(function(id){
+            if(deletedIds.indexOf(id) === -1) deletedIds.push(id);
+          });
           entries = mergeById(entries, file.data.entries);
           recurring = mergeById(recurring, file.data.recurring);
           deposits = mergeById(deposits, file.data.deposits);
           unionCategoriesInto(customCats, file.data.categories);
         }
-        var payload = { entries: entries, recurring: recurring, deposits: deposits, categories: customCats, syncedAt: new Date().toISOString() };
+        var payload = { entries: entries, recurring: recurring, deposits: deposits, categories: customCats, deletedIds: deletedIds, syncedAt: new Date().toISOString() };
         return githubPutFile(payload, file.sha).catch(function(err){
           if(err.status === 409 && n < 3) return attempt(n + 1);
           throw err;
@@ -712,6 +734,7 @@
       localStorage.setItem(RECURRING_KEY, JSON.stringify(recurring));
       localStorage.setItem(DEPOSITS_KEY, JSON.stringify(deposits));
       localStorage.setItem(CATS_KEY, JSON.stringify(customCats));
+      localStorage.setItem(DELETED_KEY, JSON.stringify(deletedIds));
       githubConfig.lastSyncedAt = Date.now();
       saveGithubConfig();
       updateSyncStatus('마지막 동기화: 방금 (정상)');
@@ -1120,11 +1143,13 @@
     reverseDepositEffect(entry);
     lastDeleted = { entry: entry, index: idx };
     entries.splice(idx, 1);
+    markDeleted(id);
     saveJSON(ENTRIES_KEY, entries);
     render();
     showToast('기록을 삭제했어요', function(){
       if(lastDeleted){
         entries.splice(Math.min(lastDeleted.index, entries.length), 0, lastDeleted.entry);
+        unmarkDeleted(lastDeleted.entry.id);
         applyDepositEffect(lastDeleted.entry);
         saveJSON(ENTRIES_KEY, entries);
         render();
@@ -1263,6 +1288,7 @@
       btn.addEventListener('click', function(){
         var id = btn.getAttribute('data-del');
         recurring = recurring.filter(function(x){ return x.id !== id; });
+        markDeleted(id);
         saveJSON(RECURRING_KEY, recurring);
         renderRecurring();
       });
@@ -1388,6 +1414,7 @@
       btn.addEventListener('click', function(){
         var id = btn.getAttribute('data-del');
         deposits = deposits.filter(function(x){ return x.id !== id; });
+        markDeleted(id);
         saveJSON(DEPOSITS_KEY, deposits);
         renderDeposits();
         renderDepositCompareChart();
@@ -1557,7 +1584,8 @@
       entries: entries,
       recurring: recurring,
       deposits: deposits,
-      categories: customCats
+      categories: customCats,
+      deletedIds: deletedIds
     };
     el.exportOutput.value = JSON.stringify(payload);
     el.exportOutput.hidden = false;
@@ -1609,6 +1637,11 @@
     catch(e){ showToast('올바른 백업 텍스트가 아니에요'); return; }
     if(!data || typeof data !== 'object'){ showToast('올바른 백업 텍스트가 아니에요'); return; }
 
+    // 삭제 목록부터 먼저 합친다 — 어느 한쪽에서 지웠으면 병합 결과에서도 제외되도록.
+    (data.deletedIds || []).forEach(function(id){
+      if(deletedIds.indexOf(id) === -1) deletedIds.push(id);
+    });
+
     // id 기준으로 합치기: 겹치는 항목은 가져온 쪽(=다른 기기의 최신 내용)을 우선한다.
     entries = mergeById(entries, data.entries);
     recurring = mergeById(recurring, data.recurring);
@@ -1626,6 +1659,7 @@
     saveJSON(RECURRING_KEY, recurring);
     saveJSON(DEPOSITS_KEY, deposits);
     saveJSON(CATS_KEY, customCats);
+    saveJSON(DELETED_KEY, deletedIds);
 
     el.importInput.value = '';
     showToast('가져오기 완료! 두 기기의 기록이 합쳐졌어요');
