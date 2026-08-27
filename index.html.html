@@ -1,0 +1,1660 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>가계부 · 나의 통장</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.min.css">
+<style>
+  :root{
+    --bg:#FAF6F1;
+    --card:#FFFFFF;
+    --card-tint:#FBF7FD;
+    --line:#EEE4F1;
+    --line-soft:#F4EDF6;
+    --ink-deep:#33283F;
+    --ink:#463A55;
+    --muted:#948AA0;
+
+    --primary:#7E5CA6;
+    --primary-soft:#F1E8F8;
+    --primary-deep:#5C4278;
+    --gold:#E3AE49;
+
+    --income:#3E9C74;
+    --income-bg:#E5F4EC;
+    --expense:#E8703F;
+    --expense-bg:#FCEBE1;
+    --deposit:#4C96C9;
+    --deposit-bg:#E7F1FA;
+
+    --font-display:'Noto Serif KR', serif;
+    --font-body:'Pretendard', -apple-system, BlinkMacSystemFont, 'Malgun Gothic', sans-serif;
+    --radius:16px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:#EFE7E0;
+    font-family:var(--font-body);
+    color:var(--ink);
+    -webkit-tap-highlight-color:transparent;
+  }
+  .app{
+    max-width:480px;
+    margin:0 auto;
+    min-height:100vh;
+    background:var(--bg);
+    padding-bottom:56px;
+  }
+
+  /* ---------- top bar ---------- */
+  .topbar{
+    position:sticky;
+    top:0;
+    z-index:20;
+    background:linear-gradient(135deg, var(--primary-deep), var(--primary));
+    color:#FCF8FF;
+    padding:16px 20px 14px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+  }
+  .topbar h1{
+    font-family:var(--font-display);
+    font-size:19px;
+    font-weight:700;
+    margin:0;
+    letter-spacing:0.5px;
+  }
+  .month-nav{display:flex;align-items:center;gap:10px;font-family:var(--font-display);}
+  .month-nav button{
+    background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.35);color:#FCF8FF;
+    width:28px;height:28px;border-radius:50%;font-size:15px;
+    display:flex;align-items:center;justify-content:center;cursor:pointer;
+  }
+  .month-nav button:active{background:rgba(255,255,255,0.28);}
+  .month-nav span{font-size:14px;min-width:78px;text-align:center;}
+
+  /* ---------- balance card ---------- */
+  .balance-card{
+    position:relative;
+    margin:18px 16px 0;
+    background:linear-gradient(160deg, #FFFFFF, var(--card-tint));
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:22px 20px 18px;
+    box-shadow:0 6px 18px rgba(126,92,166,0.10);
+    overflow:hidden;
+  }
+  .balance-label{font-size:12px;color:var(--muted);letter-spacing:1px;}
+  .balance-amount{
+    display:block;
+    font-family:var(--font-display);
+    font-size:34px;
+    font-weight:700;
+    margin-top:4px;
+    color:var(--ink-deep);
+  }
+  .balance-sub{
+    display:flex;gap:10px;margin-top:16px;
+  }
+  .sub-item{
+    flex:1;
+    border-radius:10px;
+    padding:10px 12px;
+    font-size:12px;
+  }
+  .sub-item span{display:block;color:var(--muted);margin-bottom:4px;}
+  .sub-item strong{font-family:var(--font-display);font-size:16px;}
+  .sub-item.income{background:var(--income-bg);}
+  .sub-item.income strong{color:var(--income);}
+  .sub-item.expense{background:var(--expense-bg);}
+  .sub-item.expense strong{color:var(--expense);}
+
+  .stamp{
+    position:absolute;
+    top:14px; right:16px;
+    width:74px;height:74px;
+    border-radius:50%;
+    border:1.5px solid var(--primary);
+    background:radial-gradient(circle at 32% 28%, #FBF5FF, var(--primary-soft));
+    color:var(--primary-deep);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    transform:rotate(-8deg);
+    font-family:var(--font-display);
+    line-height:1.15;
+  }
+  .stamp .m{font-size:17px;font-weight:700;}
+  .stamp .l{font-size:9px;letter-spacing:2px;margin-top:2px;color:var(--gold);}
+
+  /* ---------- generic card ---------- */
+  .card-section{
+    margin:18px 16px 0;
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:18px 18px 20px;
+  }
+  .card-section h2, .ledger-section h2{
+    font-family:var(--font-display);
+    font-size:14px;
+    margin:0 0 8px;
+    color:var(--ink-deep);
+    display:flex;align-items:center;gap:6px;
+  }
+  .card-section h2::before, .ledger-section h2::before{content:"";width:5px;height:5px;background:var(--primary);border-radius:50%;display:inline-block;}
+  .section-hint{font-size:11.5px;color:var(--muted);margin:0 0 14px;line-height:1.5;}
+
+  /* ---------- add entry ---------- */
+  .type-toggle{display:flex;background:var(--line-soft);border-radius:10px;padding:3px;margin-bottom:14px;}
+  .type-toggle button{
+    flex:1;border:none;background:none;padding:9px 0;font-family:var(--font-body);
+    font-size:13px;font-weight:600;color:var(--muted);border-radius:8px;cursor:pointer;
+  }
+  .type-toggle button.active{background:var(--card);box-shadow:0 1px 3px rgba(51,40,63,0.12);}
+  .type-toggle button[data-type="expense"].active{color:var(--expense);}
+  .type-toggle button[data-type="income"].active{color:var(--income);}
+
+  .field-row{display:flex;gap:10px;margin-bottom:14px;}
+  .field{flex:1;display:flex;flex-direction:column;gap:5px;}
+  .field label{font-size:11.5px;color:var(--muted);}
+  .field input, .field select{
+    border:1px solid var(--line);
+    background:var(--card-tint);
+    border-radius:9px;
+    padding:10px 10px;
+    font-size:14.5px;
+    font-family:var(--font-body);
+    color:var(--ink-deep);
+    width:100%;
+  }
+  .field input:focus, .field select:focus{outline:2px solid var(--primary);outline-offset:1px;}
+
+  .category-chips{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:12px;}
+  .chip{
+    border:1px solid var(--line);
+    background:var(--card-tint);
+    color:var(--ink);
+    font-size:12.5px;
+    padding:7px 12px;
+    border-radius:999px;
+    cursor:pointer;
+    font-family:var(--font-body);
+    display:flex;align-items:center;gap:6px;
+  }
+  .chip .dot{width:7px;height:7px;border-radius:50%;display:inline-block;}
+  .chip.active{color:#fff;border-color:transparent;}
+  .chip.add-chip{border-style:dashed;color:var(--muted);background:none;}
+  .chip .chip-x{font-size:11px;opacity:0.75;margin-left:2px;}
+  .chip .chip-edit{font-size:10.5px;opacity:0.75;margin-left:2px;}
+
+  .edit-banner{
+    display:flex;align-items:center;justify-content:space-between;gap:10px;
+    background:var(--primary-soft);color:var(--primary-deep);border-radius:9px;
+    padding:9px 12px;font-size:12.5px;margin-bottom:12px;
+  }
+  .edit-banner button{
+    border:none;background:none;color:var(--primary-deep);font-weight:700;font-size:12px;
+    text-decoration:underline;cursor:pointer;font-family:var(--font-body);white-space:nowrap;
+  }
+
+  .inline-form{display:none;gap:8px;margin-bottom:14px;}
+  .inline-form.open{display:flex;}
+  .inline-form input{
+    flex:1;border:1px solid var(--line);background:var(--card-tint);border-radius:9px;
+    padding:9px 10px;font-size:13px;font-family:var(--font-body);color:var(--ink-deep);
+  }
+  .inline-form button{
+    border:none;border-radius:9px;padding:0 14px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:var(--font-body);
+  }
+  .inline-form .confirm-btn{background:var(--primary);color:#fff;}
+  .inline-form .cancel-btn{background:var(--line-soft);color:var(--muted);}
+
+  .memo-input{
+    width:100%;border:1px solid var(--line);background:var(--card-tint);border-radius:9px;
+    padding:10px 12px;font-size:14px;font-family:var(--font-body);margin-bottom:14px;color:var(--ink-deep);
+  }
+  .memo-input:focus{outline:2px solid var(--primary);outline-offset:1px;}
+
+  .save-btn{
+    width:100%;border:none;border-radius:10px;padding:13px 0;
+    background:linear-gradient(135deg, var(--primary-deep), var(--primary));
+    color:#FCF8FF;font-size:15px;font-weight:700;
+    font-family:var(--font-body);cursor:pointer;letter-spacing:0.5px;
+  }
+  .save-btn:active{filter:brightness(0.94);}
+
+  /* ---------- recurring / deposit rows ---------- */
+  .item-row{
+    display:flex;align-items:center;gap:9px;
+    background:var(--card-tint);border:1px solid var(--line-soft);
+    border-radius:12px;padding:10px 12px;margin-bottom:8px;
+  }
+  .item-row .dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
+  .item-row .i-main{flex:1;min-width:0;}
+  .item-row .i-name{font-size:13.5px;color:var(--ink-deep);display:flex;align-items:center;gap:5px;}
+  .item-row .i-name .label-text{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .item-row .i-name .edit-btn{border:none;background:none;color:var(--muted);font-size:11px;cursor:pointer;padding:0;flex-shrink:0;}
+  .item-row .i-meta{font-size:10.5px;color:var(--muted);}
+  .item-row .i-amount{font-family:var(--font-display);font-weight:700;font-size:13.5px;color:var(--ink-deep);white-space:nowrap;text-align:right;}
+  .item-row .i-amount small{display:block;font-family:var(--font-body);font-weight:400;font-size:9.5px;color:var(--muted);}
+  .i-action{
+    border:none;border-radius:8px;padding:7px 10px;font-size:11px;font-weight:600;cursor:pointer;
+    background:var(--primary-soft);color:var(--primary-deep);white-space:nowrap;font-family:var(--font-body);
+  }
+  .i-action.done{background:var(--income-bg);color:var(--income);}
+  .i-del{border:none;background:none;color:var(--muted);font-size:14px;cursor:pointer;padding:2px 0 2px 4px;}
+  .rename-row{display:flex;gap:6px;flex:1;}
+  .rename-row input{
+    flex:1;border:1px solid var(--primary);background:#fff;border-radius:7px;padding:5px 8px;font-size:13px;font-family:var(--font-body);
+  }
+  .rename-row button{border:none;border-radius:7px;padding:5px 8px;font-size:11px;font-weight:600;cursor:pointer;font-family:var(--font-body);}
+  .rename-row .rn-ok{background:var(--primary);color:#fff;}
+  .rename-row .rn-cancel{background:var(--line-soft);color:var(--muted);}
+
+  /* ---------- deposit accounts ---------- */
+  .deposit-card{
+    background:var(--card-tint);border:1px solid var(--line-soft);border-radius:12px;
+    padding:12px;margin-bottom:10px;
+  }
+  .dep-top{display:flex;align-items:center;gap:8px;margin-bottom:10px;}
+  .dep-top .dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
+  .dep-name{flex:1;min-width:0;font-size:13.5px;color:var(--ink-deep);display:flex;align-items:center;gap:5px;}
+  .dep-name .label-text{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .dep-name .edit-btn{border:none;background:none;color:var(--muted);font-size:11px;cursor:pointer;padding:0;flex-shrink:0;}
+  .dep-balance{font-family:var(--font-display);font-weight:700;font-size:15px;color:var(--ink-deep);white-space:nowrap;}
+  .dep-del{border:none;background:none;color:var(--muted);font-size:14px;cursor:pointer;padding:0 0 0 6px;}
+  .dep-actions{display:flex;gap:6px;align-items:center;}
+  .dep-actions input{
+    flex:1;min-width:0;border:1px solid var(--line);background:#fff;border-radius:8px;
+    padding:8px 9px;font-size:13px;font-family:var(--font-body);color:var(--ink-deep);
+  }
+  .dep-actions input:focus{outline:2px solid var(--primary);outline-offset:1px;}
+  .dep-actions button{
+    border:none;border-radius:8px;padding:8px 12px;font-size:12px;font-weight:600;
+    cursor:pointer;font-family:var(--font-body);white-space:nowrap;flex-shrink:0;
+  }
+  .dep-in-btn{background:var(--income-bg);color:var(--income);}
+  .dep-out-btn{background:var(--expense-bg);color:var(--expense);}
+
+
+  .add-recurring-btn{
+    width:100%;border:1px dashed var(--line);background:none;color:var(--primary-deep);
+    border-radius:10px;padding:10px 0;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font-body);
+    margin-top:4px;
+  }
+  .recurring-form{display:none;margin-top:12px;padding-top:14px;border-top:1px dashed var(--line);}
+  .recurring-form.open{display:block;}
+  .recurring-form input[type="text"]{
+    width:100%;border:1px solid var(--line);background:var(--card-tint);border-radius:9px;
+    padding:10px 12px;font-size:14px;margin-bottom:12px;font-family:var(--font-body);color:var(--ink-deep);
+  }
+  .form-actions{display:flex;gap:8px;margin-top:4px;}
+  .form-actions button{
+    flex:1;border:none;border-radius:9px;padding:10px 0;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font-body);
+  }
+  .form-cancel-btn{background:var(--line-soft);color:var(--muted);}
+  .form-save-btn{background:var(--primary);color:#fff;}
+
+  .empty-small{font-size:12px;color:var(--muted);padding:2px 2px 12px;}
+
+  /* ---------- ledger list ---------- */
+  .ledger-section{margin:22px 16px 0;}
+  .day-group{margin-bottom:18px;}
+  .day-head{
+    display:flex;align-items:baseline;gap:8px;padding:0 2px 8px;
+    border-bottom:1px dashed var(--line);margin-bottom:6px;
+  }
+  .day-head .date{font-family:var(--font-display);font-weight:700;font-size:14px;color:var(--ink-deep);}
+  .day-head .dow{font-size:11.5px;color:var(--muted);}
+  .day-head .day-total{margin-left:auto;font-size:12px;color:var(--muted);}
+
+  .entry-row{
+    display:flex;align-items:center;gap:10px;
+    background:var(--card);border:1px solid var(--line-soft);
+    border-radius:12px;padding:11px 12px;margin-bottom:7px;
+  }
+  .entry-cat{
+    font-size:11px;
+    padding:4px 9px 4px 7px;border-radius:7px;white-space:nowrap;
+    display:flex;align-items:center;gap:5px;
+  }
+  .entry-cat .dot{width:6px;height:6px;border-radius:50%;}
+  .entry-memo{flex:1;font-size:13px;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .entry-right{display:flex;flex-direction:column;align-items:flex-end;gap:2px;}
+  .entry-amount{font-family:var(--font-display);font-weight:700;font-size:14.5px;}
+  .entry-amount.income{color:var(--income);}
+  .entry-amount.expense{color:var(--expense);}
+  .entry-balance{font-size:10px;color:var(--muted);}
+  .entry-del{
+    border:none;background:none;color:var(--muted);font-size:15px;
+    padding:2px 2px 2px 6px;cursor:pointer;line-height:1;
+  }
+  .entry-edit{
+    border:none;background:none;color:var(--muted);font-size:12.5px;
+    padding:2px 2px;cursor:pointer;line-height:1;
+  }
+
+  .empty-state{
+    text-align:center;padding:36px 20px;color:var(--muted);font-size:13px;
+    border:1px dashed var(--line);border-radius:var(--radius);background:var(--card-tint);
+  }
+  .empty-state .big{font-family:var(--font-display);font-size:15px;color:var(--ink-deep);display:block;margin-bottom:6px;}
+
+  /* ---------- bar list (category / deposit compare) ---------- */
+  .bar-row{margin-bottom:10px;}
+  .bar-top{display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:5px;align-items:center;gap:6px;}
+  .bar-top .name{color:var(--ink);display:flex;align-items:center;gap:6px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .bar-top .name .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+  .bar-top .amt{color:var(--muted);font-family:var(--font-display);white-space:nowrap;}
+  .bar-track{height:7px;background:var(--line-soft);border-radius:5px;overflow:hidden;}
+  .bar-fill{height:100%;border-radius:5px;}
+
+  /* ---------- monthly comparison ---------- */
+  .compare-chart{
+    display:flex;align-items:flex-end;gap:8px;height:120px;padding:0 2px;margin-bottom:10px;
+  }
+  .compare-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;}
+  .compare-bars{display:flex;align-items:flex-end;gap:3px;height:96px;}
+  .compare-bars .bar{width:9px;border-radius:4px 4px 0 0;}
+  .compare-bars .bar.income{background:var(--income);}
+  .compare-bars .bar.expense{background:var(--expense);}
+  .compare-label{font-size:10.5px;color:var(--muted);}
+  .compare-label.current{color:var(--primary-deep);font-weight:700;}
+  .compare-legend{display:flex;gap:16px;font-size:11.5px;color:var(--muted);padding-top:6px;border-top:1px dashed var(--line);}
+  .compare-legend span{display:flex;align-items:center;gap:6px;}
+  .compare-legend i{width:8px;height:8px;border-radius:50%;display:inline-block;}
+
+  .app-footer{
+    text-align:center;color:var(--muted);font-size:11px;margin-top:30px;padding:0 30px;line-height:1.6;
+  }
+
+  /* ---------- device sync ---------- */
+  .sync-textarea{
+    width:100%;min-height:88px;border:1px solid var(--line);border-radius:9px;
+    padding:10px;font-family:'SFMono-Regular',Consolas,monospace;font-size:10.5px;line-height:1.5;
+    background:var(--card-tint);color:var(--ink-deep);resize:vertical;margin-top:10px;
+  }
+  .sync-textarea:focus{outline:2px solid var(--primary);outline-offset:1px;}
+  .sync-actions{display:flex;gap:8px;margin-top:8px;}
+  .sync-actions button{
+    flex:1;border:none;border-radius:9px;padding:9px 0;font-size:12.5px;font-weight:600;
+    cursor:pointer;font-family:var(--font-body);background:var(--primary-soft);color:var(--primary-deep);
+  }
+  .sync-import-block{margin-top:18px;padding-top:16px;border-top:1px dashed var(--line);}
+  .sync-label{display:block;font-size:12px;color:var(--muted);margin-bottom:2px;}
+  .sync-import-block .save-btn{margin-top:10px;}
+  .sync-status{font-size:11.5px;color:var(--muted);text-align:center;margin:10px 0;}
+
+  /* ---------- toast ---------- */
+  .toast{
+    position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(80px);
+    background:var(--ink-deep);color:#FCF8FF;padding:11px 16px;border-radius:10px;
+    font-size:13px;display:flex;align-items:center;gap:12px;
+    box-shadow:0 6px 18px rgba(0,0,0,0.25);
+    transition:transform .25s ease;
+    z-index:50;
+    max-width:calc(480px - 40px);
+  }
+  .toast.show{transform:translateX(-50%) translateY(0);}
+  .toast button{background:none;border:none;color:var(--gold);font-weight:700;font-size:13px;cursor:pointer;text-decoration:underline;}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header class="topbar">
+    <h1>가계부</h1>
+    <div class="month-nav">
+      <button id="prevMonth" aria-label="이전 달">‹</button>
+      <span id="monthLabel">2026년 8월</span>
+      <button id="nextMonth" aria-label="다음 달">›</button>
+    </div>
+  </header>
+
+  <section class="balance-card">
+    <div class="stamp"><span class="m" id="stampMonth">8월</span><span class="l">결산</span></div>
+    <span class="balance-label">이번 달 잔액</span>
+    <span class="balance-amount" id="balanceAmount">₩0</span>
+    <div class="balance-sub">
+      <div class="sub-item income"><span>수입</span><strong id="incomeTotal">₩0</strong></div>
+      <div class="sub-item expense"><span>지출</span><strong id="expenseTotal">₩0</strong></div>
+    </div>
+  </section>
+
+  <section class="card-section">
+    <h2>오늘 기록하기</h2>
+    <div class="type-toggle" id="mainTypeToggle">
+      <button type="button" data-type="expense" class="active">지출</button>
+      <button type="button" data-type="income">수입</button>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label for="dateInput">날짜</label>
+        <input type="date" id="dateInput">
+      </div>
+      <div class="field">
+        <label for="amountInput">금액</label>
+        <input type="number" id="amountInput" placeholder="0" inputmode="numeric" min="0">
+      </div>
+    </div>
+    <div class="category-chips" id="categoryChips"></div>
+    <div class="inline-form" id="addCategoryForm">
+      <input type="text" id="newCategoryInput" placeholder="새 카테고리 이름" maxlength="10">
+      <button type="button" class="confirm-btn" id="newCategoryConfirm">추가</button>
+      <button type="button" class="cancel-btn" id="newCategoryCancel">취소</button>
+    </div>
+    <input type="text" class="memo-input" id="memoInput" placeholder="메모 (선택)" maxlength="40">
+    <div class="edit-banner" id="editBanner" hidden>이 기록을 수정하는 중이에요 <button type="button" id="cancelEditEntry">수정 취소</button></div>
+    <button class="save-btn" id="saveBtn">기록 저장</button>
+  </section>
+
+  <section class="card-section">
+    <h2>정기 지출 (구독 등)</h2>
+    <p class="section-hint">매달 나가는 구독료·공과금 등을 등록해두면, 지정한 날짜가 지난 뒤 앱을 열 때 자동으로 지출에 기록돼요. 그 사이 건너뛴 달이 있어도 지난 달들을 한꺼번에 채워 넣어요.</p>
+    <div id="recurringList"></div>
+    <div class="empty-small" id="recurringEmpty" hidden>등록된 정기 지출이 없어요.</div>
+    <button type="button" class="add-recurring-btn" id="showRecurringForm">+ 정기 지출 추가</button>
+    <div class="recurring-form" id="recurringForm">
+      <input type="text" id="recurringName" placeholder="예: 넷플릭스, 통신비">
+      <div class="field-row">
+        <div class="field"><label for="recurringCategory">카테고리</label><select id="recurringCategory"></select></div>
+        <div class="field"><label for="recurringAmount">금액</label><input type="number" id="recurringAmount" placeholder="0" min="0"></div>
+        <div class="field"><label for="recurringDay">결제일</label><input type="number" id="recurringDay" placeholder="25" min="1" max="31"></div>
+      </div>
+      <div class="form-actions">
+        <button type="button" class="form-cancel-btn" id="recurringCancel">취소</button>
+        <button type="button" class="form-save-btn" id="recurringSave">저장</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card-section">
+    <h2>예금 통장</h2>
+    <p class="section-hint">적금·연금 등 예금 계좌를 만들어두고, 매달 넣고 싶은 만큼 직접 입금·출금하면 잔고에 그대로 반영돼요. 입금은 예금지출로, 출금은 예금환급(수입)으로 기록돼요.</p>
+    <div id="depositList"></div>
+    <div class="empty-small" id="depositEmpty" hidden>등록된 예금 통장이 없어요.</div>
+    <button type="button" class="add-recurring-btn" id="showDepositForm">+ 예금 통장 추가</button>
+    <div class="recurring-form" id="depositForm">
+      <input type="text" id="depositName" placeholder="예: 청년희망적금, 국민연금">
+      <div class="field-row">
+        <div class="field"><label for="depositBalance">현재 잔고</label><input type="number" id="depositBalance" placeholder="0" min="0"></div>
+      </div>
+      <div class="form-actions">
+        <button type="button" class="form-cancel-btn" id="depositCancel">취소</button>
+        <button type="button" class="form-save-btn" id="depositSave">저장</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card-section" id="depositCompareSection" hidden>
+    <h2>예금 잔고 비교</h2>
+    <div id="depositBars"></div>
+  </section>
+
+  <section class="ledger-section">
+    <h2>이 달의 기록</h2>
+    <div id="ledgerList"></div>
+    <div class="empty-state" id="emptyState" hidden>
+      <span class="big">이 달의 기록이 없어요</span>
+      위에서 오늘의 수입이나 지출을 남겨보세요.
+    </div>
+  </section>
+
+  <section class="card-section" id="categorySummarySection" hidden>
+    <h2>카테고리별 지출</h2>
+    <div id="categoryBars"></div>
+  </section>
+
+  <section class="card-section">
+    <h2>월별 비교</h2>
+    <div class="compare-chart" id="compareChart"></div>
+    <div class="compare-legend"><span><i style="background:var(--income)"></i>수입</span><span><i style="background:var(--expense)"></i>지출</span></div>
+  </section>
+
+  <section class="card-section">
+    <h2>깃허브 자동 동기화</h2>
+    <p class="section-hint">깃허브 저장소를 한 번 연결해두면, 이 기기에서 기록을 바꿀 때마다 자동으로 올라가고 앱을 열 때 다른 기기의 변경사항도 자동으로 받아와요. 토큰은 이 기기의 브라우저에만 저장되고 파일 자체에는 절대 포함되지 않아요.</p>
+    <div class="field-row">
+      <div class="field"><label for="ghOwner">깃허브 사용자명</label><input type="text" id="ghOwner" placeholder="예: mygithub" autocomplete="off"></div>
+      <div class="field"><label for="ghRepo">저장소 이름</label><input type="text" id="ghRepo" placeholder="예: gagyebu-data" autocomplete="off"></div>
+    </div>
+    <div class="field-row">
+      <div class="field" style="flex:1 1 100%;"><label for="ghToken">개인 액세스 토큰</label><input type="password" id="ghToken" placeholder="ghp_ 로 시작하는 토큰" autocomplete="off"></div>
+    </div>
+    <div class="form-actions">
+      <button type="button" class="form-cancel-btn" id="ghDisconnect">연결 해제</button>
+      <button type="button" class="form-save-btn" id="ghConnect">연결 저장 &amp; 테스트</button>
+    </div>
+    <div class="sync-status" id="syncStatus">아직 설정 안 됨</div>
+    <button type="button" class="add-recurring-btn" id="ghSyncNow">지금 동기화</button>
+  </section>
+
+  <section class="card-section">
+    <h2>수동 백업 (깃허브 없이)</h2>
+    <p class="section-hint">위 깃허브 연동을 쓰면 이 과정 없이도 자동으로 동기화돼요. 계정 연결이 번거롭거나 인터넷이 안 될 때는 이 방법으로 수동 백업할 수 있어요. 한쪽에서 <strong>내보내기</strong>로 백업 텍스트를 만들어 카톡 "나와의 채팅" 등으로 보낸 뒤, 다른 쪽에서 그 텍스트를 복사해 <strong>가져오기</strong>에 붙여넣으면 두 기기의 기록이 합쳐져요.</p>
+    <button type="button" class="add-recurring-btn" id="exportBtn">내보내기 (백업 텍스트 만들기)</button>
+    <textarea id="exportOutput" class="sync-textarea" readonly hidden></textarea>
+    <div class="sync-actions" id="exportActions" hidden>
+      <button type="button" id="copyExportBtn">복사하기</button>
+      <button type="button" id="downloadExportBtn">파일로 저장</button>
+    </div>
+
+    <div class="sync-import-block">
+      <label class="sync-label" for="importInput">가져오기 — 백업 텍스트를 여기에 붙여넣으세요</label>
+      <textarea id="importInput" class="sync-textarea" placeholder="여기에 내보내기 텍스트를 붙여넣으세요"></textarea>
+      <button type="button" class="save-btn" id="importBtn">가져와서 합치기</button>
+    </div>
+  </section>
+
+  <footer class="app-footer">기록은 기본적으로 이 브라우저(기기)에만 저장돼요.<br>깃허브를 연결하면 기기 간에 자동으로 동기화돼요.</footer>
+</div>
+
+<div class="toast" id="toast">
+  <span id="toastMsg"></span>
+  <button id="toastUndo">실행취소</button>
+</div>
+
+<script>
+(function(){
+  var ENTRIES_KEY = 'gagyebu_entries_v1';
+  var CATS_KEY = 'gagyebu_custom_categories_v1';
+  var RECURRING_KEY = 'gagyebu_recurring_v1';
+  var DEPOSITS_KEY = 'gagyebu_deposits_v1';
+  var GITHUB_CONFIG_KEY = 'gagyebu_github_config_v1'; // 기기별 설정 — 동기화 대상 아님
+  var DEPOSIT_CATEGORY = '예금지출';
+  var WITHDRAW_CATEGORY = '예금환급';
+  var GITHUB_API = 'https://api.github.com';
+
+  var DOW = ['일','월','화','수','목','금','토'];
+  var CAT_PALETTE = ['#E8703F','#E3AE49','#3E9C74','#4C96C9','#7E5CA6','#D97BA8','#A98F3E','#4FAF9E','#C96A5A','#6E80C9','#B0559C','#5B9BD5'];
+
+  function paletteColor(name){
+    var hash = 0;
+    for(var i=0;i<name.length;i++){ hash = (hash * 31 + name.charCodeAt(i)) >>> 0; }
+    return CAT_PALETTE[hash % CAT_PALETTE.length];
+  }
+  function categoryColor(name){ return paletteColor(name); }
+  function depositColor(id){ return paletteColor(id); }
+
+  // ---------- state ----------
+  var entries = loadJSON(ENTRIES_KEY, []);
+  var recurring = loadJSON(RECURRING_KEY, []);
+  var deposits = loadJSON(DEPOSITS_KEY, []);
+  var editingDepositId = null;
+  var editingEntryId = null;
+
+  function loadJSON(key, fallback){
+    try{ var raw = localStorage.getItem(key); return raw ? JSON.parse(raw) : fallback; }
+    catch(e){ return fallback; }
+  }
+  var SYNC_KEYS = [ENTRIES_KEY, RECURRING_KEY, DEPOSITS_KEY, CATS_KEY];
+  function saveJSON(key, val){
+    try{ localStorage.setItem(key, JSON.stringify(val)); }catch(e){}
+    if(SYNC_KEYS.indexOf(key) !== -1) scheduleSync();
+  }
+
+  // id 기준으로 두 배열을 합친다. 겹치는 id는 incoming(가져온/원격) 쪽을 우선한다.
+  function mergeById(localArr, incomingArr){
+    var map = {};
+    (localArr || []).forEach(function(item){ if(item && item.id) map[item.id] = item; });
+    (incomingArr || []).forEach(function(item){ if(item && item.id) map[item.id] = item; });
+    return Object.keys(map).map(function(k){ return map[k]; });
+  }
+  function unionCategoriesInto(target, incoming){
+    if(!incoming) return;
+    ['expense','income'].forEach(function(key){
+      (incoming[key] || []).forEach(function(c){ if(target[key].indexOf(c) === -1) target[key].push(c); });
+    });
+  }
+
+  // 카테고리는 이제 완전히 편집 가능한 목록으로 관리한다 (이름 변경·삭제 가능).
+  // 예금지출/예금환급은 예금 통장 기능과 직접 연결돼 있어 항상 목록 끝에 고정되고 수정/삭제할 수 없다.
+  var customCats = (function(){
+    var stored = loadJSON(CATS_KEY, null);
+    if(stored && stored.migrated) return stored;
+    var baseExpense = ['식비','카페','교통','주거','통신','구독','의료','쇼핑','문화','교육','기타'];
+    var baseIncome  = ['급여','용돈','부수입','이자','환급','기타'];
+    var oldExpense = (stored && stored.expense) || [];
+    var oldIncome  = (stored && stored.income) || [];
+    var merged = {
+      expense: baseExpense.concat(oldExpense.filter(function(c){ return baseExpense.indexOf(c) === -1 && c !== DEPOSIT_CATEGORY; })),
+      income:  baseIncome.concat(oldIncome.filter(function(c){ return baseIncome.indexOf(c) === -1 && c !== WITHDRAW_CATEGORY; })),
+      migrated: true
+    };
+    saveJSON(CATS_KEY, merged);
+    return merged;
+  })();
+
+  // ========== 깃허브 자동 동기화 ==========
+  var githubConfig = loadJSON(GITHUB_CONFIG_KEY, null); // {owner, repo, token, path, branch, lastSyncedAt} — 기기별, 동기화 대상 아님
+  var syncTimer = null;
+  var syncInFlight = false;
+
+  function githubConfigured(){ return !!(githubConfig && githubConfig.owner && githubConfig.repo && githubConfig.token); }
+  function saveGithubConfig(){ try{ localStorage.setItem(GITHUB_CONFIG_KEY, JSON.stringify(githubConfig)); }catch(e){} }
+
+  function utf8ToBase64(str){ return btoa(unescape(encodeURIComponent(str))); }
+  function base64ToUtf8(str){ return decodeURIComponent(escape(atob(str))); }
+
+  function githubHeaders(){
+    return { 'Authorization': 'token ' + githubConfig.token, 'Accept': 'application/vnd.github+json' };
+  }
+  function githubFileUrl(){
+    return GITHUB_API + '/repos/' + encodeURIComponent(githubConfig.owner) + '/' + encodeURIComponent(githubConfig.repo) +
+      '/contents/' + (githubConfig.path || 'data.json');
+  }
+
+  function githubGetFile(){
+    return fetch(githubFileUrl() + '?ref=' + (githubConfig.branch || 'main'), { headers: githubHeaders() })
+      .then(function(res){
+        if(res.status === 404) return { sha: null, data: null };
+        if(!res.ok) return res.text().then(function(t){ throw new Error('조회 실패 (' + res.status + ')'); });
+        return res.json().then(function(json){
+          var data = null;
+          try{ data = JSON.parse(base64ToUtf8(json.content.replace(/\n/g, ''))); }catch(e){ data = null; }
+          return { sha: json.sha, data: data };
+        });
+      });
+  }
+  function githubPutFile(payload, sha){
+    var body = {
+      message: '가계부 동기화 ' + new Date().toISOString(),
+      content: utf8ToBase64(JSON.stringify(payload)),
+      branch: githubConfig.branch || 'main'
+    };
+    if(sha) body.sha = sha;
+    return fetch(githubFileUrl(), {
+      method: 'PUT',
+      headers: Object.assign({ 'Content-Type': 'application/json' }, githubHeaders()),
+      body: JSON.stringify(body)
+    }).then(function(res){
+      if(!res.ok){
+        var err = new Error('저장 실패 (' + res.status + ')');
+        err.status = res.status;
+        throw err;
+      }
+      return res.json();
+    });
+  }
+
+  function updateSyncStatus(text){ if(el && el.syncStatus) el.syncStatus.textContent = text; }
+
+  function syncWithGitHub(opts){
+    opts = opts || {};
+    if(!githubConfigured()) return Promise.resolve();
+    if(syncInFlight) return Promise.resolve();
+    syncInFlight = true;
+    updateSyncStatus('동기화 중…');
+
+    function attempt(n){
+      return githubGetFile().then(function(file){
+        if(file.data){
+          entries = mergeById(entries, file.data.entries);
+          recurring = mergeById(recurring, file.data.recurring);
+          deposits = mergeById(deposits, file.data.deposits);
+          unionCategoriesInto(customCats, file.data.categories);
+        }
+        var payload = { entries: entries, recurring: recurring, deposits: deposits, categories: customCats, syncedAt: new Date().toISOString() };
+        return githubPutFile(payload, file.sha).catch(function(err){
+          if(err.status === 409 && n < 3) return attempt(n + 1);
+          throw err;
+        });
+      });
+    }
+
+    return attempt(1).then(function(){
+      localStorage.setItem(ENTRIES_KEY, JSON.stringify(entries));
+      localStorage.setItem(RECURRING_KEY, JSON.stringify(recurring));
+      localStorage.setItem(DEPOSITS_KEY, JSON.stringify(deposits));
+      localStorage.setItem(CATS_KEY, JSON.stringify(customCats));
+      githubConfig.lastSyncedAt = Date.now();
+      saveGithubConfig();
+      updateSyncStatus('마지막 동기화: 방금 (정상)');
+      if(opts.toast) showToast('깃허브와 동기화됐어요');
+      if(opts.rerender !== false){
+        viewYear = today.getFullYear(); viewMonth = today.getMonth();
+        renderCategoryChips();
+        renderRecurringCategoryOptions();
+        render();
+      }
+    }).catch(function(err){
+      updateSyncStatus('동기화 실패: ' + (err && err.message ? err.message : '알 수 없는 오류'));
+      if(opts.toast) showToast('동기화에 실패했어요. 사용자명·저장소·토큰을 확인해주세요');
+    }).finally(function(){
+      syncInFlight = false;
+    });
+  }
+
+  function scheduleSync(){
+    if(typeof githubConfigured !== 'function' || !githubConfigured()) return;
+    clearTimeout(syncTimer);
+    syncTimer = setTimeout(function(){ syncWithGitHub({ toast: false }); }, 1500);
+  }
+
+  function isProtectedCategory(type, name){
+    return (type === 'expense' && name === DEPOSIT_CATEGORY) || (type === 'income' && name === WITHDRAW_CATEGORY);
+  }
+  function catList(type){
+    var list = (type === 'income' ? customCats.income : customCats.expense).slice();
+    var protectedCat = type === 'income' ? WITHDRAW_CATEGORY : DEPOSIT_CATEGORY;
+    if(list.indexOf(protectedCat) === -1) list.push(protectedCat);
+    return list;
+  }
+
+  var currentType = 'expense';
+  var selectedCategory = catList('expense')[0];
+  var today = new Date();
+  var viewYear = today.getFullYear();
+  var viewMonth = today.getMonth();
+
+  var lastDeleted = null;
+  var toastTimer = null;
+
+  function pad(n){ return n < 10 ? '0' + n : '' + n; }
+  function todayStr(){ return today.getFullYear() + '-' + pad(today.getMonth()+1) + '-' + pad(today.getDate()); }
+  function monthKey(y,m){ return y + '-' + pad(m+1); }
+  function fmtWon(n){ return '₩' + Math.round(n).toLocaleString('ko-KR'); }
+  function escapeHtml(str){
+    var d = document.createElement('div');
+    d.textContent = str;
+    return d.innerHTML;
+  }
+  function newId(){ return Date.now() + '_' + Math.random().toString(36).slice(2,7); }
+
+  // ---------- elements ----------
+  var el = {
+    monthLabel: document.getElementById('monthLabel'),
+    stampMonth: document.getElementById('stampMonth'),
+    prevMonth: document.getElementById('prevMonth'),
+    nextMonth: document.getElementById('nextMonth'),
+    balanceAmount: document.getElementById('balanceAmount'),
+    incomeTotal: document.getElementById('incomeTotal'),
+    expenseTotal: document.getElementById('expenseTotal'),
+    mainTypeToggle: document.getElementById('mainTypeToggle'),
+    dateInput: document.getElementById('dateInput'),
+    amountInput: document.getElementById('amountInput'),
+    categoryChips: document.getElementById('categoryChips'),
+    addCategoryForm: document.getElementById('addCategoryForm'),
+    newCategoryInput: document.getElementById('newCategoryInput'),
+    newCategoryConfirm: document.getElementById('newCategoryConfirm'),
+    newCategoryCancel: document.getElementById('newCategoryCancel'),
+    memoInput: document.getElementById('memoInput'),
+    editBanner: document.getElementById('editBanner'),
+    cancelEditEntry: document.getElementById('cancelEditEntry'),
+    saveBtn: document.getElementById('saveBtn'),
+    ledgerList: document.getElementById('ledgerList'),
+    emptyState: document.getElementById('emptyState'),
+    catSection: document.getElementById('categorySummarySection'),
+    catBars: document.getElementById('categoryBars'),
+    compareChart: document.getElementById('compareChart'),
+
+    recurringList: document.getElementById('recurringList'),
+    recurringEmpty: document.getElementById('recurringEmpty'),
+    showRecurringForm: document.getElementById('showRecurringForm'),
+    recurringForm: document.getElementById('recurringForm'),
+    recurringName: document.getElementById('recurringName'),
+    recurringCategory: document.getElementById('recurringCategory'),
+    recurringAmount: document.getElementById('recurringAmount'),
+    recurringDay: document.getElementById('recurringDay'),
+    recurringCancel: document.getElementById('recurringCancel'),
+    recurringSave: document.getElementById('recurringSave'),
+
+    depositList: document.getElementById('depositList'),
+    depositEmpty: document.getElementById('depositEmpty'),
+    showDepositForm: document.getElementById('showDepositForm'),
+    depositForm: document.getElementById('depositForm'),
+    depositName: document.getElementById('depositName'),
+    depositBalance: document.getElementById('depositBalance'),
+    depositCancel: document.getElementById('depositCancel'),
+    depositSave: document.getElementById('depositSave'),
+    depositCompareSection: document.getElementById('depositCompareSection'),
+    depositBars: document.getElementById('depositBars'),
+
+    toast: document.getElementById('toast'),
+    toastMsg: document.getElementById('toastMsg'),
+    toastUndo: document.getElementById('toastUndo'),
+
+    ghOwner: document.getElementById('ghOwner'),
+    ghRepo: document.getElementById('ghRepo'),
+    ghToken: document.getElementById('ghToken'),
+    ghConnect: document.getElementById('ghConnect'),
+    ghDisconnect: document.getElementById('ghDisconnect'),
+    ghSyncNow: document.getElementById('ghSyncNow'),
+    syncStatus: document.getElementById('syncStatus'),
+
+    exportBtn: document.getElementById('exportBtn'),
+    exportOutput: document.getElementById('exportOutput'),
+    exportActions: document.getElementById('exportActions'),
+    copyExportBtn: document.getElementById('copyExportBtn'),
+    downloadExportBtn: document.getElementById('downloadExportBtn'),
+    importInput: document.getElementById('importInput'),
+    importBtn: document.getElementById('importBtn')
+  };
+
+  el.dateInput.value = todayStr();
+
+  // 깃허브 연동 설정 UI 초기화
+  if(githubConfig){
+    el.ghOwner.value = githubConfig.owner || '';
+    el.ghRepo.value = githubConfig.repo || '';
+    el.ghToken.value = githubConfig.token || '';
+    updateSyncStatus(githubConfig.lastSyncedAt ? ('마지막 동기화: ' + new Date(githubConfig.lastSyncedAt).toLocaleString('ko-KR')) : '연결됨 (아직 동기화 전)');
+  }
+  el.ghConnect.addEventListener('click', function(){
+    var owner = el.ghOwner.value.trim();
+    var repo = el.ghRepo.value.trim();
+    var token = el.ghToken.value.trim();
+    if(!owner || !repo || !token){ showToast('사용자명·저장소·토큰을 모두 입력해주세요'); return; }
+    githubConfig = { owner: owner, repo: repo, token: token, path: 'data.json', branch: 'main' };
+    saveGithubConfig();
+    syncWithGitHub({ toast: true });
+  });
+  el.ghDisconnect.addEventListener('click', function(){
+    githubConfig = null;
+    try{ localStorage.removeItem(GITHUB_CONFIG_KEY); }catch(e){}
+    el.ghOwner.value = ''; el.ghRepo.value = ''; el.ghToken.value = '';
+    updateSyncStatus('연결 해제됨');
+  });
+  el.ghSyncNow.addEventListener('click', function(){
+    if(!githubConfigured()){ showToast('먼저 연결 저장을 해주세요'); return; }
+    syncWithGitHub({ toast: true });
+  });
+
+  // ---------- toast ----------
+  function showToast(msg, undoFn){
+    clearTimeout(toastTimer);
+    el.toastMsg.textContent = msg;
+    el.toastUndo.style.display = undoFn ? 'inline' : 'none';
+    el.toastUndo.onclick = function(){ if(undoFn) undoFn(); hideToast(); };
+    el.toast.classList.add('show');
+    toastTimer = setTimeout(hideToast, 5000);
+  }
+  function hideToast(){ el.toast.classList.remove('show'); }
+
+  // ---------- category chips (main add form) ----------
+  var categoryFormMode = 'add'; // 'add' | 'rename'
+  var categoryFormTarget = null;
+
+  function renderCategoryChips(){
+    var list = catList(currentType);
+    if(list.indexOf(selectedCategory) === -1) selectedCategory = list[0];
+    el.categoryChips.innerHTML = '';
+    list.forEach(function(cat){
+      var color = categoryColor(cat);
+      var protectedCat = isProtectedCategory(currentType, cat);
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'chip' + (cat === selectedCategory ? ' active' : '');
+      if(cat === selectedCategory) b.style.background = color;
+      var dot = '<span class="dot" style="background:' + color + '"></span>';
+      var icons = '';
+      if(!protectedCat){
+        icons =
+          '<span class="chip-edit" data-edit="' + escapeHtml(cat) + '">✎</span>' +
+          '<span class="chip-x" data-del="' + escapeHtml(cat) + '">✕</span>';
+      }
+      b.innerHTML = dot + escapeHtml(cat) + icons;
+      b.addEventListener('click', function(ev){
+        if(ev.target && ev.target.getAttribute('data-edit')){
+          ev.stopPropagation();
+          openCategoryForm('rename', ev.target.getAttribute('data-edit'));
+          return;
+        }
+        if(ev.target && ev.target.getAttribute('data-del')){
+          ev.stopPropagation();
+          removeCategory(currentType, ev.target.getAttribute('data-del'));
+          return;
+        }
+        selectedCategory = cat;
+        renderCategoryChips();
+      });
+      el.categoryChips.appendChild(b);
+    });
+    var addBtn = document.createElement('button');
+    addBtn.type = 'button';
+    addBtn.className = 'chip add-chip';
+    addBtn.textContent = '+ 추가';
+    addBtn.addEventListener('click', function(){ openCategoryForm('add', null); });
+    el.categoryChips.appendChild(addBtn);
+  }
+
+  function openCategoryForm(mode, target){
+    categoryFormMode = mode;
+    categoryFormTarget = target;
+    el.newCategoryInput.value = mode === 'rename' ? target : '';
+    el.newCategoryConfirm.textContent = mode === 'rename' ? '변경' : '추가';
+    el.addCategoryForm.classList.add('open');
+    el.newCategoryInput.focus();
+    if(mode === 'rename') el.newCategoryInput.select();
+  }
+
+  function removeCategory(type, name){
+    if(isProtectedCategory(type, name)) return;
+    var key = type === 'income' ? 'income' : 'expense';
+    customCats[key] = customCats[key].filter(function(c){ return c !== name; });
+    saveJSON(CATS_KEY, customCats);
+    if(selectedCategory === name) selectedCategory = catList(type)[0];
+    renderCategoryChips();
+    renderRecurringCategoryOptions();
+  }
+
+  function renameCategory(type, oldName, newName){
+    if(isProtectedCategory(type, oldName)) return;
+    newName = newName.trim();
+    if(!newName || newName === oldName) return;
+    if(catList(type).indexOf(newName) !== -1){
+      showToast('이미 있는 카테고리예요');
+      return;
+    }
+    var key = type === 'income' ? 'income' : 'expense';
+    var idx = customCats[key].indexOf(oldName);
+    if(idx !== -1) customCats[key][idx] = newName;
+    saveJSON(CATS_KEY, customCats);
+
+    // 이 카테고리를 쓰던 기존 기록·정기지출에도 새 이름을 자동 반영
+    var changed = false;
+    entries.forEach(function(e){ if(e.type === type && e.category === oldName){ e.category = newName; changed = true; } });
+    if(changed) saveJSON(ENTRIES_KEY, entries);
+    var recChanged = false;
+    recurring.forEach(function(r){ if(r.category === oldName){ r.category = newName; recChanged = true; } });
+    if(recChanged) saveJSON(RECURRING_KEY, recurring);
+
+    if(selectedCategory === oldName) selectedCategory = newName;
+    render();
+  }
+
+  el.newCategoryConfirm.addEventListener('click', function(){
+    var name = el.newCategoryInput.value.trim();
+    if(!name) return;
+    if(categoryFormMode === 'rename'){
+      renameCategory(currentType, categoryFormTarget, name);
+    } else {
+      var key = currentType === 'income' ? 'income' : 'expense';
+      if(catList(currentType).indexOf(name) === -1){
+        customCats[key].push(name);
+        saveJSON(CATS_KEY, customCats);
+      }
+      selectedCategory = name;
+    }
+    el.addCategoryForm.classList.remove('open');
+    renderCategoryChips();
+    renderRecurringCategoryOptions();
+  });
+  el.newCategoryCancel.addEventListener('click', function(){
+    el.addCategoryForm.classList.remove('open');
+  });
+
+  el.mainTypeToggle.querySelectorAll('button').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      currentType = btn.getAttribute('data-type');
+      el.mainTypeToggle.querySelectorAll('button').forEach(function(b){ b.classList.toggle('active', b === btn); });
+      el.addCategoryForm.classList.remove('open');
+      renderCategoryChips();
+    });
+  });
+
+  // ---------- month nav ----------
+  el.prevMonth.addEventListener('click', function(){
+    viewMonth--; if(viewMonth < 0){ viewMonth = 11; viewYear--; }
+    render();
+  });
+  el.nextMonth.addEventListener('click', function(){
+    viewMonth++; if(viewMonth > 11){ viewMonth = 0; viewYear++; }
+    render();
+  });
+
+  // ---------- save manual entry (신규 작성 / 수정 겸용) ----------
+  function reverseDepositEffect(entry){
+    if(!entry.depositId) return;
+    var dep = deposits.find(function(d){ return d.id === entry.depositId; });
+    if(!dep) return;
+    if(entry.type === 'expense') dep.balance = Math.max(0, dep.balance - entry.amount);
+    else if(entry.type === 'income') dep.balance += entry.amount;
+    saveJSON(DEPOSITS_KEY, deposits);
+  }
+  function applyDepositEffect(entry){
+    if(!entry.depositId) return;
+    var dep = deposits.find(function(d){ return d.id === entry.depositId; });
+    if(!dep) return;
+    if(entry.type === 'expense') dep.balance += entry.amount;
+    else if(entry.type === 'income') dep.balance = Math.max(0, dep.balance - entry.amount);
+    saveJSON(DEPOSITS_KEY, deposits);
+  }
+
+  function startEditEntry(id){
+    var entry = entries.find(function(e){ return e.id === id; });
+    if(!entry) return;
+    editingEntryId = id;
+    currentType = entry.type;
+    el.mainTypeToggle.querySelectorAll('button').forEach(function(b){ b.classList.toggle('active', b.getAttribute('data-type') === entry.type); });
+    if(catList(entry.type).indexOf(entry.category) === -1){
+      var key = entry.type === 'income' ? 'income' : 'expense';
+      customCats[key].push(entry.category);
+      saveJSON(CATS_KEY, customCats);
+    }
+    selectedCategory = entry.category;
+    el.dateInput.value = entry.date;
+    el.amountInput.value = entry.amount;
+    el.memoInput.value = entry.memo || '';
+    renderCategoryChips();
+    el.editBanner.hidden = false;
+    el.saveBtn.textContent = '수정 저장';
+    document.querySelector('.card-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+  function exitEditEntry(){
+    editingEntryId = null;
+    el.editBanner.hidden = true;
+    el.saveBtn.textContent = '기록 저장';
+    el.amountInput.value = '';
+    el.memoInput.value = '';
+  }
+  el.cancelEditEntry.addEventListener('click', exitEditEntry);
+
+  el.saveBtn.addEventListener('click', function(){
+    var amount = parseFloat(el.amountInput.value);
+    var date = el.dateInput.value;
+    if(!date){ el.dateInput.focus(); return; }
+    if(!amount || amount <= 0){ el.amountInput.focus(); return; }
+    amount = Math.round(amount);
+
+    if(editingEntryId){
+      var entry = entries.find(function(e){ return e.id === editingEntryId; });
+      if(entry){
+        reverseDepositEffect(entry);
+        entry.date = date;
+        entry.type = currentType;
+        entry.category = selectedCategory;
+        entry.memo = el.memoInput.value.trim();
+        entry.amount = amount;
+        if(entry.depositId && entry.category !== DEPOSIT_CATEGORY && entry.category !== WITHDRAW_CATEGORY){
+          entry.depositId = null;
+        }
+        applyDepositEffect(entry);
+        saveJSON(ENTRIES_KEY, entries);
+      }
+      var d2 = new Date(date + 'T00:00:00');
+      viewYear = d2.getFullYear(); viewMonth = d2.getMonth();
+      exitEditEntry();
+      render();
+      return;
+    }
+
+    entries.push({
+      id: newId(), date: date, type: currentType, category: selectedCategory,
+      memo: el.memoInput.value.trim(), amount: amount, createdAt: Date.now()
+    });
+    saveJSON(ENTRIES_KEY, entries);
+
+    var d = new Date(date + 'T00:00:00');
+    viewYear = d.getFullYear();
+    viewMonth = d.getMonth();
+
+    el.amountInput.value = '';
+    el.memoInput.value = '';
+    render();
+  });
+
+  function computeRunningBalances(){
+    var sorted = entries.slice().sort(function(a,b){
+      if(a.date !== b.date) return a.date < b.date ? -1 : 1;
+      return a.createdAt - b.createdAt;
+    });
+    var bal = 0, map = {};
+    sorted.forEach(function(e){
+      bal += e.type === 'income' ? e.amount : -e.amount;
+      map[e.id] = bal;
+    });
+    return map;
+  }
+
+  function deleteEntry(id){
+    var idx = entries.findIndex(function(e){ return e.id === id; });
+    if(idx === -1) return;
+    if(editingEntryId === id) exitEditEntry();
+    var entry = entries[idx];
+    reverseDepositEffect(entry);
+    lastDeleted = { entry: entry, index: idx };
+    entries.splice(idx, 1);
+    saveJSON(ENTRIES_KEY, entries);
+    render();
+    showToast('기록을 삭제했어요', function(){
+      if(lastDeleted){
+        entries.splice(Math.min(lastDeleted.index, entries.length), 0, lastDeleted.entry);
+        applyDepositEffect(lastDeleted.entry);
+        saveJSON(ENTRIES_KEY, entries);
+        render();
+        lastDeleted = null;
+      }
+    });
+  }
+
+  // ---------- 날짜 기반 자동 기록 공통 유틸 ----------
+  function daysInMonth(y, m){ return new Date(y, m + 1, 0).getDate(); }
+
+  // item.day(결제일/납입일)을 기준으로, 아직 반영 안 된 달들 중 '날짜가 지난' 달을 순서대로 찾아준다.
+  // 앱을 오래 안 열어서 여러 달이 밀려 있어도 전부 반환한다.
+  function pendingOccurrences(item, todayMidnight){
+    var occurrences = [];
+    var y, m;
+    if(item.lastRecordedMonth){
+      var parts = item.lastRecordedMonth.split('-');
+      var d = new Date(parseInt(parts[0],10), parseInt(parts[1],10) - 1, 1);
+      d.setMonth(d.getMonth() + 1);
+      y = d.getFullYear(); m = d.getMonth();
+    } else {
+      var created = new Date(item.createdAt || Date.now());
+      y = created.getFullYear(); m = created.getMonth();
+    }
+    for(var i = 0; i < 60; i++){
+      if(y > todayMidnight.getFullYear() || (y === todayMidnight.getFullYear() && m > todayMidnight.getMonth())) break;
+      var day = Math.min(item.day || 1, daysInMonth(y, m));
+      var target = new Date(y, m, day);
+      if(target <= todayMidnight){
+        occurrences.push({ year: y, month: m, day: day, monthKey: monthKey(y, m) });
+        m++; if(m > 11){ m = 0; y++; }
+      } else {
+        break;
+      }
+    }
+    return occurrences;
+  }
+  function todayMidnight(){ return new Date(today.getFullYear(), today.getMonth(), today.getDate()); }
+
+  // ========== 정기 지출 (구독 등, 항상 지출) ==========
+  function renderRecurringCategoryOptions(){
+    var list = catList('expense').filter(function(c){ return c !== DEPOSIT_CATEGORY; });
+    el.recurringCategory.innerHTML = '';
+    list.forEach(function(cat){
+      var o = document.createElement('option');
+      o.value = cat; o.textContent = cat;
+      el.recurringCategory.appendChild(o);
+    });
+    if(list.indexOf('구독') !== -1) el.recurringCategory.value = '구독';
+  }
+
+  el.showRecurringForm.addEventListener('click', function(){
+    el.recurringForm.classList.add('open');
+    renderRecurringCategoryOptions();
+    el.recurringDay.value = today.getDate();
+    el.recurringName.focus();
+  });
+  el.recurringCancel.addEventListener('click', function(){
+    el.recurringForm.classList.remove('open');
+    el.recurringName.value = ''; el.recurringAmount.value = ''; el.recurringDay.value = '';
+  });
+  el.recurringSave.addEventListener('click', function(){
+    var name = el.recurringName.value.trim();
+    var amount = parseFloat(el.recurringAmount.value);
+    var category = el.recurringCategory.value;
+    var day = parseInt(el.recurringDay.value, 10);
+    if(!name){ el.recurringName.focus(); return; }
+    if(!amount || amount <= 0){ el.recurringAmount.focus(); return; }
+    if(!day || day < 1 || day > 31) day = today.getDate();
+    recurring.push({ id: newId(), name: name, type: 'expense', category: category, amount: Math.round(amount), day: day, lastRecordedMonth: null, createdAt: Date.now() });
+    saveJSON(RECURRING_KEY, recurring);
+    el.recurringName.value = ''; el.recurringAmount.value = ''; el.recurringDay.value = '';
+    el.recurringForm.classList.remove('open');
+    autoRecordRecurring(false);
+    viewYear = today.getFullYear(); viewMonth = today.getMonth();
+    render();
+  });
+
+  function autoRecordRecurring(showNotice){
+    var mid = todayMidnight();
+    var count = 0;
+    recurring.forEach(function(r){
+      pendingOccurrences(r, mid).forEach(function(o){
+        entries.push({ id: newId(), date: o.year + '-' + pad(o.month+1) + '-' + pad(o.day), type: 'expense', category: r.category, memo: r.name, amount: r.amount, createdAt: Date.now(), auto: true });
+        r.lastRecordedMonth = o.monthKey;
+        count++;
+      });
+    });
+    if(count > 0){
+      saveJSON(ENTRIES_KEY, entries);
+      saveJSON(RECURRING_KEY, recurring);
+      if(showNotice) showToast(count + '건의 정기 지출이 자동 기록됐어요');
+    }
+    return count;
+  }
+
+  function renderRecurring(){
+    var realMonth = monthKey(today.getFullYear(), today.getMonth());
+    el.recurringList.innerHTML = '';
+    el.recurringEmpty.hidden = recurring.length > 0;
+    recurring.forEach(function(r){
+      var done = r.lastRecordedMonth === realMonth;
+      var color = categoryColor(r.category);
+      var row = document.createElement('div');
+      row.className = 'item-row';
+      row.innerHTML =
+        '<span class="dot" style="background:' + color + '"></span>' +
+        '<span class="i-main"><span class="i-name"><span class="label-text">' + escapeHtml(r.name) + '</span></span>' +
+        '<span class="i-meta">' + escapeHtml(r.category) + ' · 매월 ' + (r.day || 1) + '일</span></span>' +
+        '<span class="i-amount">' + fmtWon(r.amount) + '</span>' +
+        '<button type="button" class="i-action' + (done ? ' done' : '') + '" data-id="' + r.id + '">' + (done ? '기록됨 ✓' : '지금 기록') + '</button>' +
+        '<button type="button" class="i-del" data-del="' + r.id + '">✕</button>';
+      el.recurringList.appendChild(row);
+    });
+    el.recurringList.querySelectorAll('.i-action').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        var id = btn.getAttribute('data-id');
+        var r = recurring.find(function(x){ return x.id === id; });
+        if(!r) return;
+        if(r.lastRecordedMonth === realMonth){
+          r.lastRecordedMonth = null;
+          saveJSON(RECURRING_KEY, recurring);
+          renderRecurring();
+          return;
+        }
+        entries.push({ id: newId(), date: todayStr(), type: 'expense', category: r.category, memo: r.name, amount: r.amount, createdAt: Date.now(), auto: true });
+        r.lastRecordedMonth = realMonth;
+        saveJSON(ENTRIES_KEY, entries);
+        saveJSON(RECURRING_KEY, recurring);
+        viewYear = today.getFullYear(); viewMonth = today.getMonth();
+        render();
+      });
+    });
+    el.recurringList.querySelectorAll('.i-del').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        var id = btn.getAttribute('data-del');
+        recurring = recurring.filter(function(x){ return x.id !== id; });
+        saveJSON(RECURRING_KEY, recurring);
+        renderRecurring();
+      });
+    });
+  }
+
+  // ========== 예금 통장 (수동 입금/출금) ==========
+  el.showDepositForm.addEventListener('click', function(){
+    el.depositForm.classList.add('open');
+    el.depositName.focus();
+  });
+  el.depositCancel.addEventListener('click', function(){
+    el.depositForm.classList.remove('open');
+    el.depositName.value = ''; el.depositBalance.value = '';
+  });
+  el.depositSave.addEventListener('click', function(){
+    var name = el.depositName.value.trim();
+    var balance = parseFloat(el.depositBalance.value);
+    if(!name){ el.depositName.focus(); return; }
+    if(isNaN(balance) || balance < 0) balance = 0;
+    deposits.push({ id: newId(), name: name, balance: Math.round(balance), createdAt: Date.now() });
+    saveJSON(DEPOSITS_KEY, deposits);
+    el.depositName.value = ''; el.depositBalance.value = '';
+    el.depositForm.classList.remove('open');
+    render();
+  });
+
+  function renderDeposits(){
+    el.depositList.innerHTML = '';
+    el.depositEmpty.hidden = deposits.length > 0;
+    deposits.forEach(function(dep){
+      var color = depositColor(dep.id);
+      var card = document.createElement('div');
+      card.className = 'deposit-card';
+
+      if(editingDepositId === dep.id){
+        card.innerHTML =
+          '<div class="dep-top rename-row">' +
+            '<input type="text" id="renameInput" value="' + escapeHtml(dep.name) + '" maxlength="16">' +
+            '<button type="button" class="rn-ok" data-ok="' + dep.id + '">완료</button>' +
+            '<button type="button" class="rn-cancel" data-cancelrn="1">취소</button>' +
+          '</div>';
+        el.depositList.appendChild(card);
+        return;
+      }
+
+      card.innerHTML =
+        '<div class="dep-top">' +
+          '<span class="dot" style="background:' + color + '"></span>' +
+          '<span class="dep-name"><span class="label-text">' + escapeHtml(dep.name) + '</span><button type="button" class="edit-btn" data-edit="' + dep.id + '">✎</button></span>' +
+          '<span class="dep-balance">' + fmtWon(dep.balance) + '</span>' +
+          '<button type="button" class="dep-del" data-del="' + dep.id + '">✕</button>' +
+        '</div>' +
+        '<div class="dep-actions">' +
+          '<input type="number" placeholder="금액" min="0" data-amount-for="' + dep.id + '">' +
+          '<button type="button" class="dep-in-btn" data-in="' + dep.id + '">입금</button>' +
+          '<button type="button" class="dep-out-btn" data-out="' + dep.id + '">출금</button>' +
+        '</div>';
+      el.depositList.appendChild(card);
+    });
+
+    el.depositList.querySelectorAll('.edit-btn').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        editingDepositId = btn.getAttribute('data-edit');
+        renderDeposits();
+        var input = document.getElementById('renameInput');
+        if(input){ input.focus(); input.select(); }
+      });
+    });
+    el.depositList.querySelectorAll('.rn-cancel').forEach(function(btn){
+      btn.addEventListener('click', function(){ editingDepositId = null; renderDeposits(); });
+    });
+    el.depositList.querySelectorAll('.rn-ok').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        var id = btn.getAttribute('data-ok');
+        var dep = deposits.find(function(x){ return x.id === id; });
+        var input = document.getElementById('renameInput');
+        if(dep && input){
+          var v = input.value.trim();
+          if(v) dep.name = v;
+          saveJSON(DEPOSITS_KEY, deposits);
+        }
+        editingDepositId = null;
+        render();
+      });
+    });
+
+    function getAmountInput(id){ return el.depositList.querySelector('[data-amount-for="' + id + '"]'); }
+
+    el.depositList.querySelectorAll('[data-in]').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        var id = btn.getAttribute('data-in');
+        var dep = deposits.find(function(x){ return x.id === id; });
+        var input = getAmountInput(id);
+        var amount = input ? parseFloat(input.value) : NaN;
+        if(!dep || !amount || amount <= 0){ if(input) input.focus(); return; }
+        amount = Math.round(amount);
+        dep.balance += amount;
+        entries.push({ id: newId(), date: todayStr(), type: 'expense', category: DEPOSIT_CATEGORY, memo: dep.name, amount: amount, createdAt: Date.now(), depositId: dep.id });
+        saveJSON(DEPOSITS_KEY, deposits);
+        saveJSON(ENTRIES_KEY, entries);
+        viewYear = today.getFullYear(); viewMonth = today.getMonth();
+        render();
+      });
+    });
+    el.depositList.querySelectorAll('[data-out]').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        var id = btn.getAttribute('data-out');
+        var dep = deposits.find(function(x){ return x.id === id; });
+        var input = getAmountInput(id);
+        var amount = input ? parseFloat(input.value) : NaN;
+        if(!dep || !amount || amount <= 0){ if(input) input.focus(); return; }
+        amount = Math.round(amount);
+        dep.balance = Math.max(0, dep.balance - amount);
+        entries.push({ id: newId(), date: todayStr(), type: 'income', category: WITHDRAW_CATEGORY, memo: dep.name, amount: amount, createdAt: Date.now(), depositId: dep.id });
+        saveJSON(DEPOSITS_KEY, deposits);
+        saveJSON(ENTRIES_KEY, entries);
+        viewYear = today.getFullYear(); viewMonth = today.getMonth();
+        render();
+      });
+    });
+    el.depositList.querySelectorAll('.dep-del').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        var id = btn.getAttribute('data-del');
+        deposits = deposits.filter(function(x){ return x.id !== id; });
+        saveJSON(DEPOSITS_KEY, deposits);
+        renderDeposits();
+        renderDepositCompareChart();
+      });
+    });
+  }
+
+  function renderDepositCompareChart(){
+    if(deposits.length === 0){ el.depositCompareSection.hidden = true; return; }
+    el.depositCompareSection.hidden = false;
+    var sorted = deposits.slice().sort(function(a,b){ return b.balance - a.balance; });
+    var max = Math.max(1, sorted[0].balance);
+    el.depositBars.innerHTML = '';
+    sorted.forEach(function(dep){
+      var color = depositColor(dep.id);
+      var row = document.createElement('div');
+      row.className = 'bar-row';
+      row.innerHTML =
+        '<div class="bar-top"><span class="name"><span class="dot" style="background:' + color + '"></span>' + escapeHtml(dep.name) + '</span><span class="amt">' + fmtWon(dep.balance) + '</span></div>' +
+        '<div class="bar-track"><div class="bar-fill" style="width:' + Math.max(4, (dep.balance/max*100)) + '%;background:' + color + '"></div></div>';
+      el.depositBars.appendChild(row);
+    });
+  }
+
+  // ---------- main render ----------
+  function render(){
+    var mLabel = viewYear + '년 ' + (viewMonth+1) + '월';
+    el.monthLabel.textContent = mLabel;
+    el.stampMonth.textContent = (viewMonth+1) + '월';
+
+    var monthPrefix = monthKey(viewYear, viewMonth);
+    var monthEntries = entries.filter(function(e){ return e.date.indexOf(monthPrefix) === 0; });
+
+    var income = 0, expense = 0;
+    monthEntries.forEach(function(e){ if(e.type === 'income') income += e.amount; else expense += e.amount; });
+    el.incomeTotal.textContent = fmtWon(income);
+    el.expenseTotal.textContent = fmtWon(expense);
+    el.balanceAmount.textContent = fmtWon(income - expense);
+
+    // ledger list
+    var balanceMap = computeRunningBalances();
+    var byDate = {};
+    monthEntries.forEach(function(e){ (byDate[e.date] = byDate[e.date] || []).push(e); });
+    var dates = Object.keys(byDate).sort().reverse();
+
+    el.ledgerList.innerHTML = '';
+    if(dates.length === 0){
+      el.emptyState.hidden = false;
+    }else{
+      el.emptyState.hidden = true;
+      dates.forEach(function(date){
+        var dayEntries = byDate[date].slice().sort(function(a,b){ return b.createdAt - a.createdAt; });
+        var d = new Date(date + 'T00:00:00');
+        var dayTotal = 0;
+        dayEntries.forEach(function(e){ dayTotal += (e.type === 'income' ? e.amount : -e.amount); });
+
+        var group = document.createElement('div');
+        group.className = 'day-group';
+        var head = document.createElement('div');
+        head.className = 'day-head';
+        head.innerHTML =
+          '<span class="date">' + (d.getMonth()+1) + '월 ' + d.getDate() + '일</span>' +
+          '<span class="dow">' + DOW[d.getDay()] + '요일</span>' +
+          '<span class="day-total">' + (dayTotal >= 0 ? '+' : '-') + fmtWon(Math.abs(dayTotal)) + '</span>';
+        group.appendChild(head);
+
+        dayEntries.forEach(function(e){
+          var color = categoryColor(e.category);
+          var row = document.createElement('div');
+          row.className = 'entry-row';
+          var sign = e.type === 'income' ? '+' : '-';
+          row.innerHTML =
+            '<span class="entry-cat" style="background:' + color + '22;color:' + color + '"><span class="dot" style="background:' + color + '"></span>' + escapeHtml(e.category) + '</span>' +
+            '<span class="entry-memo">' + (e.memo ? escapeHtml(e.memo) : '<span style="color:#C7BED2;">메모 없음</span>') + '</span>' +
+            '<span class="entry-right">' +
+              '<span class="entry-amount ' + e.type + '">' + sign + fmtWon(e.amount) + '</span>' +
+              '<span class="entry-balance">잔액 ' + fmtWon(balanceMap[e.id]) + '</span>' +
+            '</span>' +
+            '<button class="entry-edit" aria-label="수정" data-edit-entry="' + e.id + '">✎</button>' +
+            '<button class="entry-del" aria-label="삭제" data-id="' + e.id + '">✕</button>';
+          group.appendChild(row);
+        });
+        el.ledgerList.appendChild(group);
+      });
+      el.ledgerList.querySelectorAll('.entry-edit').forEach(function(btn){
+        btn.addEventListener('click', function(){ startEditEntry(btn.getAttribute('data-edit-entry')); });
+      });
+      el.ledgerList.querySelectorAll('.entry-del').forEach(function(btn){
+        btn.addEventListener('click', function(){ deleteEntry(btn.getAttribute('data-id')); });
+      });
+    }
+
+    // category summary (expenses only, colored)
+    var catTotals = {};
+    monthEntries.forEach(function(e){
+      if(e.type !== 'expense') return;
+      catTotals[e.category] = (catTotals[e.category] || 0) + e.amount;
+    });
+    var catArr = Object.keys(catTotals).map(function(k){ return { name: k, amount: catTotals[k] }; });
+    catArr.sort(function(a,b){ return b.amount - a.amount; });
+
+    if(catArr.length === 0){
+      el.catSection.hidden = true;
+    }else{
+      el.catSection.hidden = false;
+      var max = catArr[0].amount;
+      el.catBars.innerHTML = '';
+      catArr.forEach(function(c){
+        var color = categoryColor(c.name);
+        var row = document.createElement('div');
+        row.className = 'bar-row';
+        row.innerHTML =
+          '<div class="bar-top"><span class="name"><span class="dot" style="background:' + color + '"></span>' + escapeHtml(c.name) + '</span><span class="amt">' + fmtWon(c.amount) + '</span></div>' +
+          '<div class="bar-track"><div class="bar-fill" style="width:' + Math.max(4, (c.amount/max*100)) + '%;background:' + color + '"></div></div>';
+        el.catBars.appendChild(row);
+      });
+    }
+
+    renderCompareChart();
+    renderRecurring();
+    renderDeposits();
+    renderDepositCompareChart();
+  }
+
+  function renderCompareChart(){
+    var months = [];
+    for(var i=5;i>=0;i--){
+      var mm = viewMonth - i, yy = viewYear;
+      while(mm < 0){ mm += 12; yy--; }
+      months.push({ year: yy, month: mm });
+    }
+    var data = months.map(function(m){
+      var prefix = monthKey(m.year, m.month);
+      var inc = 0, exp = 0;
+      entries.forEach(function(e){
+        if(e.date.indexOf(prefix) === 0){
+          if(e.type === 'income') inc += e.amount; else exp += e.amount;
+        }
+      });
+      return { year:m.year, month:m.month, income:inc, expense:exp };
+    });
+    var maxVal = 1;
+    data.forEach(function(d){ maxVal = Math.max(maxVal, d.income, d.expense); });
+
+    el.compareChart.innerHTML = '';
+    data.forEach(function(d){
+      var isCurrent = d.year === viewYear && d.month === viewMonth;
+      var incH = Math.round((d.income / maxVal) * 96);
+      var expH = Math.round((d.expense / maxVal) * 96);
+      var col = document.createElement('div');
+      col.className = 'compare-col';
+      col.innerHTML =
+        '<div class="compare-bars">' +
+          '<div class="bar income" style="height:' + (d.income > 0 ? Math.max(3,incH) : 0) + 'px"></div>' +
+          '<div class="bar expense" style="height:' + (d.expense > 0 ? Math.max(3,expH) : 0) + 'px"></div>' +
+        '</div>' +
+        '<span class="compare-label' + (isCurrent ? ' current' : '') + '">' + (d.month+1) + '월</span>';
+      el.compareChart.appendChild(col);
+    });
+  }
+
+  // ========== 기기 간 동기화 (내보내기 / 가져오기) ==========
+  el.exportBtn.addEventListener('click', function(){
+    var payload = {
+      v: 1,
+      exportedAt: new Date().toISOString(),
+      entries: entries,
+      recurring: recurring,
+      deposits: deposits,
+      categories: customCats
+    };
+    el.exportOutput.value = JSON.stringify(payload);
+    el.exportOutput.hidden = false;
+    el.exportActions.hidden = false;
+    el.exportOutput.focus();
+    el.exportOutput.select();
+  });
+
+  function fallbackCopy(){
+    try{
+      el.exportOutput.focus();
+      el.exportOutput.select();
+      document.execCommand('copy');
+      showToast('복사했어요. 카톡 "나와의 채팅" 등에 붙여넣어 보내세요');
+    }catch(e){
+      showToast('복사에 실패했어요. 직접 길게 눌러 선택해서 복사해주세요');
+    }
+  }
+  el.copyExportBtn.addEventListener('click', function(){
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(el.exportOutput.value).then(function(){
+        showToast('복사했어요. 카톡 "나와의 채팅" 등에 붙여넣어 보내세요');
+      }).catch(fallbackCopy);
+    } else {
+      fallbackCopy();
+    }
+  });
+  el.downloadExportBtn.addEventListener('click', function(){
+    try{
+      var blob = new Blob([el.exportOutput.value], { type: 'application/json' });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url;
+      a.download = 'gagyebu_backup_' + todayStr() + '.json';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(function(){ URL.revokeObjectURL(url); }, 2000);
+    }catch(e){
+      showToast('파일 저장에 실패했어요. 복사하기를 이용해주세요');
+    }
+  });
+
+  el.importBtn.addEventListener('click', function(){
+    var raw = el.importInput.value.trim();
+    if(!raw){ el.importInput.focus(); return; }
+    var data;
+    try{ data = JSON.parse(raw); }
+    catch(e){ showToast('올바른 백업 텍스트가 아니에요'); return; }
+    if(!data || typeof data !== 'object'){ showToast('올바른 백업 텍스트가 아니에요'); return; }
+
+    // id 기준으로 합치기: 겹치는 항목은 가져온 쪽(=다른 기기의 최신 내용)을 우선한다.
+    entries = mergeById(entries, data.entries);
+    recurring = mergeById(recurring, data.recurring);
+    deposits = mergeById(deposits, data.deposits);
+
+    if(data.categories){
+      ['expense','income'].forEach(function(key){
+        (data.categories[key] || []).forEach(function(c){
+          if(customCats[key].indexOf(c) === -1) customCats[key].push(c);
+        });
+      });
+    }
+
+    saveJSON(ENTRIES_KEY, entries);
+    saveJSON(RECURRING_KEY, recurring);
+    saveJSON(DEPOSITS_KEY, deposits);
+    saveJSON(CATS_KEY, customCats);
+
+    el.importInput.value = '';
+    showToast('가져오기 완료! 두 기기의 기록이 합쳐졌어요');
+    viewYear = today.getFullYear(); viewMonth = today.getMonth();
+    renderCategoryChips();
+    renderRecurringCategoryOptions();
+    render();
+  });
+
+  renderCategoryChips();
+  renderRecurringCategoryOptions();
+
+  function finishStartup(){
+    // 앱을 열 때, 결제일이 지난 정기 지출을 자동으로 기록 (건너뛴 달도 한꺼번에 채움)
+    var c1 = autoRecordRecurring(false);
+    if(c1 > 0){
+      viewYear = today.getFullYear(); viewMonth = today.getMonth();
+      showToast(c1 + '건의 정기 지출이 날짜가 지나 자동 기록됐어요');
+    }
+    render();
+  }
+
+  if(githubConfigured()){
+    // 앱을 열 때 깃허브에서 먼저 최신 내용을 받아와 합친 뒤 시작한다.
+    syncWithGitHub({ toast: false, rerender: false }).then(finishStartup);
+  } else {
+    finishStartup();
+  }
+})();
+</script>
+</body>
+</html>
