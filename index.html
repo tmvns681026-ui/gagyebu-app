@@ -6,8 +6,7 @@
 <title>가계부 · 나의 통장</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&display=swap" rel="stylesheet">
 <style>
   :root{
     --bg:#FAF6F1;
@@ -31,8 +30,8 @@
     --deposit:#4C96C9;
     --deposit-bg:#E7F1FA;
 
-    --font-display:'Noto Serif KR', serif;
-    --font-body:'Pretendard', -apple-system, BlinkMacSystemFont, 'Malgun Gothic', sans-serif;
+    --font-display:'Gowun Dodum', sans-serif;
+    --font-body:'Gowun Dodum', sans-serif;
     --radius:16px;
   }
   *{box-sizing:border-box;}
@@ -78,6 +77,34 @@
   }
   .month-nav button:active{background:rgba(255,255,255,0.28);}
   .month-nav span{font-size:14px;min-width:78px;text-align:center;}
+
+  /* ---------- page tabs ---------- */
+  .page-tabs{
+    position:sticky;
+    top:60px;
+    z-index:19;
+    display:flex;
+    gap:8px;
+    background:var(--bg);
+    padding:12px 16px 4px;
+  }
+  .page-tab{
+    flex:1;
+    border:1px solid var(--line);
+    background:var(--card);
+    color:var(--muted);
+    font-family:var(--font-body);
+    font-size:13.5px;
+    font-weight:600;
+    padding:10px 0;
+    border-radius:10px;
+    cursor:pointer;
+  }
+  .page-tab.active{
+    background:linear-gradient(135deg, var(--primary-deep), var(--primary));
+    color:#FCF8FF;
+    border-color:transparent;
+  }
 
   /* ---------- balance card ---------- */
   .balance-card{
@@ -147,7 +174,7 @@
     display:flex;align-items:center;gap:6px;
   }
   .card-section h2::before, .ledger-section h2::before{content:"";width:5px;height:5px;background:var(--primary);border-radius:50%;display:inline-block;}
-  .section-hint{font-size:11.5px;color:var(--muted);margin:0 0 14px;line-height:1.5;}
+  .section-hint{font-size:12.5px;color:var(--muted);margin:0 0 14px;line-height:1.5;}
 
   /* ---------- add entry ---------- */
   .type-toggle{display:flex;background:var(--line-soft);border-radius:10px;padding:3px;margin-bottom:14px;}
@@ -161,7 +188,7 @@
 
   .field-row{display:flex;gap:10px;margin-bottom:14px;}
   .field{flex:1;display:flex;flex-direction:column;gap:5px;}
-  .field label{font-size:11.5px;color:var(--muted);}
+  .field label{font-size:12.5px;color:var(--muted);}
   .field input, .field select{
     border:1px solid var(--line);
     background:var(--card-tint);
@@ -239,11 +266,11 @@
   .item-row .i-name{font-size:13.5px;color:var(--ink-deep);display:flex;align-items:center;gap:5px;}
   .item-row .i-name .label-text{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .item-row .i-name .edit-btn{border:none;background:none;color:var(--muted);font-size:11px;cursor:pointer;padding:0;flex-shrink:0;}
-  .item-row .i-meta{font-size:10.5px;color:var(--muted);}
+  .item-row .i-meta{font-size:12px;color:var(--muted);}
   .item-row .i-amount{font-family:var(--font-display);font-weight:700;font-size:13.5px;color:var(--ink-deep);white-space:nowrap;text-align:right;}
   .item-row .i-amount small{display:block;font-family:var(--font-body);font-weight:400;font-size:9.5px;color:var(--muted);}
   .i-action{
-    border:none;border-radius:8px;padding:7px 10px;font-size:11px;font-weight:600;cursor:pointer;
+    border:none;border-radius:8px;padding:7px 10px;font-size:12px;font-weight:600;cursor:pointer;
     background:var(--primary-soft);color:var(--primary-deep);white-space:nowrap;font-family:var(--font-body);
   }
   .i-action.done{background:var(--income-bg);color:var(--income);}
@@ -252,7 +279,7 @@
   .rename-row input{
     flex:1;border:1px solid var(--primary);background:#fff;border-radius:7px;padding:5px 8px;font-size:13px;font-family:var(--font-body);
   }
-  .rename-row button{border:none;border-radius:7px;padding:5px 8px;font-size:11px;font-weight:600;cursor:pointer;font-family:var(--font-body);}
+  .rename-row button{border:none;border-radius:7px;padding:5px 8px;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font-body);}
   .rename-row .rn-ok{background:var(--primary);color:#fff;}
   .rename-row .rn-cancel{background:var(--line-soft);color:var(--muted);}
 
@@ -280,6 +307,23 @@
   }
   .dep-in-btn{background:var(--income-bg);color:var(--income);}
   .dep-out-btn{background:var(--expense-bg);color:var(--expense);}
+
+  .dep-detail-toggle{
+    width:100%;border:none;background:none;color:var(--primary-deep);
+    font-family:var(--font-body);font-size:12.5px;font-weight:600;
+    padding:8px 0 0;cursor:pointer;text-align:center;
+  }
+  .dep-detail{margin-top:8px;padding-top:10px;border-top:1px dashed var(--line);}
+  .dep-detail-month{
+    font-family:var(--font-display);font-size:12.5px;font-weight:700;color:var(--ink-deep);
+    margin:10px 0 4px;
+  }
+  .dep-detail-month:first-child{margin-top:0;}
+  .dep-detail-month .net{font-family:var(--font-body);font-weight:400;color:var(--muted);font-size:12px;}
+  .dep-detail-row{display:flex;justify-content:space-between;font-size:12px;color:var(--ink);padding:4px 0;}
+  .dep-detail-row .amt.in{color:var(--income);font-family:var(--font-display);font-weight:600;}
+  .dep-detail-row .amt.out{color:var(--expense);font-family:var(--font-display);font-weight:600;}
+  .dep-detail-empty{font-size:12px;color:var(--muted);padding:8px 0 0;text-align:center;}
 
 
   .add-recurring-btn{
@@ -310,7 +354,7 @@
     border-bottom:1px dashed var(--line);margin-bottom:6px;
   }
   .day-head .date{font-family:var(--font-display);font-weight:700;font-size:14px;color:var(--ink-deep);}
-  .day-head .dow{font-size:11.5px;color:var(--muted);}
+  .day-head .dow{font-size:12.5px;color:var(--muted);}
   .day-head .day-total{margin-left:auto;font-size:12px;color:var(--muted);}
 
   .entry-row{
@@ -319,7 +363,7 @@
     border-radius:12px;padding:11px 12px;margin-bottom:7px;
   }
   .entry-cat{
-    font-size:11px;
+    font-size:12px;
     padding:4px 9px 4px 7px;border-radius:7px;white-space:nowrap;
     display:flex;align-items:center;gap:5px;
   }
@@ -329,7 +373,7 @@
   .entry-amount{font-family:var(--font-display);font-weight:700;font-size:14.5px;}
   .entry-amount.income{color:var(--income);}
   .entry-amount.expense{color:var(--expense);}
-  .entry-balance{font-size:10px;color:var(--muted);}
+  .entry-balance{font-size:11.5px;color:var(--muted);}
   .entry-del{
     border:none;background:none;color:var(--muted);font-size:15px;
     padding:2px 2px 2px 6px;cursor:pointer;line-height:1;
@@ -363,14 +407,14 @@
   .compare-bars .bar{width:9px;border-radius:4px 4px 0 0;}
   .compare-bars .bar.income{background:var(--income);}
   .compare-bars .bar.expense{background:var(--expense);}
-  .compare-label{font-size:10.5px;color:var(--muted);}
+  .compare-label{font-size:12px;color:var(--muted);}
   .compare-label.current{color:var(--primary-deep);font-weight:700;}
-  .compare-legend{display:flex;gap:16px;font-size:11.5px;color:var(--muted);padding-top:6px;border-top:1px dashed var(--line);}
+  .compare-legend{display:flex;gap:16px;font-size:12.5px;color:var(--muted);padding-top:6px;border-top:1px dashed var(--line);}
   .compare-legend span{display:flex;align-items:center;gap:6px;}
   .compare-legend i{width:8px;height:8px;border-radius:50%;display:inline-block;}
 
   .app-footer{
-    text-align:center;color:var(--muted);font-size:11px;margin-top:30px;padding:0 30px;line-height:1.6;
+    text-align:center;color:var(--muted);font-size:12px;margin-top:30px;padding:0 30px;line-height:1.6;
   }
 
   /* ---------- device sync ---------- */
@@ -388,7 +432,7 @@
   .sync-import-block{margin-top:18px;padding-top:16px;border-top:1px dashed var(--line);}
   .sync-label{display:block;font-size:12px;color:var(--muted);margin-bottom:2px;}
   .sync-import-block .save-btn{margin-top:10px;}
-  .sync-status{font-size:11.5px;color:var(--muted);text-align:center;margin:10px 0;}
+  .sync-status{font-size:12.5px;color:var(--muted);text-align:center;margin:10px 0;}
 
   /* ---------- toast ---------- */
   .toast{
@@ -415,6 +459,13 @@
       <button id="nextMonth" aria-label="다음 달">›</button>
     </div>
   </header>
+
+  <nav class="page-tabs" id="pageTabs">
+    <button type="button" class="page-tab active" data-view="gagyebu">가계부</button>
+    <button type="button" class="page-tab" data-view="deposit">예금 통장</button>
+  </nav>
+
+  <div id="viewGagyebu">
 
   <section class="balance-card">
     <div class="stamp"><span class="m" id="stampMonth">8월</span><span class="l">결산</span></div>
@@ -473,9 +524,44 @@
     </div>
   </section>
 
+  <section class="ledger-section">
+    <h2>이 달의 기록</h2>
+    <div id="ledgerList"></div>
+    <div class="empty-state" id="emptyState" hidden>
+      <span class="big">이 달의 기록이 없어요</span>
+      위에서 오늘의 수입이나 지출을 남겨보세요.
+    </div>
+  </section>
+
+  <section class="card-section" id="categorySummarySection" hidden>
+    <h2>카테고리별 지출</h2>
+    <div id="categoryBars"></div>
+  </section>
+
+  <section class="card-section">
+    <h2>월별 비교</h2>
+    <div class="compare-chart" id="compareChart"></div>
+    <div class="compare-legend"><span><i style="background:var(--income)"></i>수입</span><span><i style="background:var(--expense)"></i>지출</span></div>
+  </section>
+
+  </div>
+
+  <div id="viewDeposit" hidden>
+
+  <section class="balance-card">
+    <span class="balance-label">예금 총 잔액</span>
+    <span class="balance-amount" id="depositTotalAmount">₩0</span>
+    <div class="balance-sub">
+      <div class="sub-item" style="background:var(--deposit-bg);">
+        <span>예금 통장 수</span>
+        <strong id="depositCount" style="color:var(--deposit);">0개</strong>
+      </div>
+    </div>
+  </section>
+
   <section class="card-section">
     <h2>예금 통장</h2>
-    <p class="section-hint">적금·연금 등 예금 계좌를 만들어두고, 매달 넣고 싶은 만큼 직접 입금·출금하면 잔고에 그대로 반영돼요. 입금은 예금지출로, 출금은 예금환급(수입)으로 기록돼요.</p>
+    <p class="section-hint">적금·연금 등 예금 계좌를 만들어두고, 매달 넣고 싶은 만큼 직접 입금·출금하면 잔고에 그대로 반영돼요. 입금은 예금지출로, 출금은 예금환급(수입)으로 기록돼요. 통장 카드 안의 "월별 내역 보기"를 누르면 그 통장의 달별 입출금 내역을 볼 수 있어요.</p>
     <div id="depositList"></div>
     <div class="empty-small" id="depositEmpty" hidden>등록된 예금 통장이 없어요.</div>
     <button type="button" class="add-recurring-btn" id="showDepositForm">+ 예금 통장 추가</button>
@@ -496,25 +582,7 @@
     <div id="depositBars"></div>
   </section>
 
-  <section class="ledger-section">
-    <h2>이 달의 기록</h2>
-    <div id="ledgerList"></div>
-    <div class="empty-state" id="emptyState" hidden>
-      <span class="big">이 달의 기록이 없어요</span>
-      위에서 오늘의 수입이나 지출을 남겨보세요.
-    </div>
-  </section>
-
-  <section class="card-section" id="categorySummarySection" hidden>
-    <h2>카테고리별 지출</h2>
-    <div id="categoryBars"></div>
-  </section>
-
-  <section class="card-section">
-    <h2>월별 비교</h2>
-    <div class="compare-chart" id="compareChart"></div>
-    <div class="compare-legend"><span><i style="background:var(--income)"></i>수입</span><span><i style="background:var(--expense)"></i>지출</span></div>
-  </section>
+  </div>
 
   <section class="card-section">
     <h2>깃허브 자동 동기화</h2>
@@ -614,12 +682,18 @@
     }
   }
 
-  // id 기준으로 두 배열을 합친다. 겹치는 id는 incoming(가져온/원격) 쪽을 우선한다.
+  // id 기준으로 두 배열을 합친다. 겹치는 id는 updatedAt(마지막 수정 시각)이 더 최신인 쪽을 우선한다.
+  // (예금 잔고처럼 같은 id가 반복해서 바뀌는 데이터가, 아직 안 올라간 로컬 변경을 오래된 원격 값으로 덮어쓰지 않도록 하기 위함)
   // deletedIds에 있는 id는 로컬·원격 어느 쪽에 남아있든 결과에서 제외한다 (삭제가 동기화로 되살아나는 것 방지).
+  function recencyOf(item){ return item.updatedAt || item.createdAt || 0; }
   function mergeById(localArr, incomingArr){
     var map = {};
     (localArr || []).forEach(function(item){ if(item && item.id) map[item.id] = item; });
-    (incomingArr || []).forEach(function(item){ if(item && item.id) map[item.id] = item; });
+    (incomingArr || []).forEach(function(item){
+      if(!item || !item.id) return;
+      var existing = map[item.id];
+      if(!existing || recencyOf(item) >= recencyOf(existing)){ map[item.id] = item; }
+    });
     deletedIds.forEach(function(id){ delete map[id]; });
     return Object.keys(map).map(function(k){ return map[k]; });
   }
@@ -798,6 +872,9 @@
 
   // ---------- elements ----------
   var el = {
+    pageTabs: document.getElementById('pageTabs'),
+    viewGagyebu: document.getElementById('viewGagyebu'),
+    viewDeposit: document.getElementById('viewDeposit'),
     monthLabel: document.getElementById('monthLabel'),
     stampMonth: document.getElementById('stampMonth'),
     prevMonth: document.getElementById('prevMonth'),
@@ -836,6 +913,8 @@
 
     depositList: document.getElementById('depositList'),
     depositEmpty: document.getElementById('depositEmpty'),
+    depositTotalAmount: document.getElementById('depositTotalAmount'),
+    depositCount: document.getElementById('depositCount'),
     showDepositForm: document.getElementById('showDepositForm'),
     depositForm: document.getElementById('depositForm'),
     depositName: document.getElementById('depositName'),
@@ -867,6 +946,16 @@
   };
 
   el.dateInput.value = todayStr();
+
+  // ---------- page tabs ----------
+  el.pageTabs.querySelectorAll('.page-tab').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var view = btn.getAttribute('data-view');
+      el.pageTabs.querySelectorAll('.page-tab').forEach(function(b){ b.classList.toggle('active', b === btn); });
+      el.viewGagyebu.hidden = (view !== 'gagyebu');
+      el.viewDeposit.hidden = (view !== 'deposit');
+    });
+  });
 
   // 깃허브 연동 설정 UI 초기화
   if(githubConfig){
@@ -1045,6 +1134,7 @@
     if(!dep) return;
     if(entry.type === 'expense') dep.balance = Math.max(0, dep.balance - entry.amount);
     else if(entry.type === 'income') dep.balance += entry.amount;
+    dep.updatedAt = Date.now();
     saveJSON(DEPOSITS_KEY, deposits);
   }
   function applyDepositEffect(entry){
@@ -1053,6 +1143,7 @@
     if(!dep) return;
     if(entry.type === 'expense') dep.balance += entry.amount;
     else if(entry.type === 'income') dep.balance = Math.max(0, dep.balance - entry.amount);
+    dep.updatedAt = Date.now();
     saveJSON(DEPOSITS_KEY, deposits);
   }
 
@@ -1101,6 +1192,7 @@
         entry.category = selectedCategory;
         entry.memo = el.memoInput.value.trim();
         entry.amount = amount;
+        entry.updatedAt = Date.now();
         if(entry.depositId && entry.category !== DEPOSIT_CATEGORY && entry.category !== WITHDRAW_CATEGORY){
           entry.depositId = null;
         }
@@ -1116,7 +1208,7 @@
 
     entries.push({
       id: newId(), date: date, type: currentType, category: selectedCategory,
-      memo: el.memoInput.value.trim(), amount: amount, createdAt: Date.now()
+      memo: el.memoInput.value.trim(), amount: amount, createdAt: Date.now(), updatedAt: Date.now()
     });
     saveJSON(ENTRIES_KEY, entries);
 
@@ -1227,7 +1319,7 @@
     if(!name){ el.recurringName.focus(); return; }
     if(!amount || amount <= 0){ el.recurringAmount.focus(); return; }
     if(!day || day < 1 || day > 31) day = today.getDate();
-    recurring.push({ id: newId(), name: name, type: 'expense', category: category, amount: Math.round(amount), day: day, lastRecordedMonth: null, createdAt: Date.now() });
+    recurring.push({ id: newId(), name: name, type: 'expense', category: category, amount: Math.round(amount), day: day, lastRecordedMonth: null, createdAt: Date.now(), updatedAt: Date.now() });
     saveJSON(RECURRING_KEY, recurring);
     el.recurringName.value = ''; el.recurringAmount.value = ''; el.recurringDay.value = '';
     el.recurringForm.classList.remove('open');
@@ -1241,8 +1333,9 @@
     var count = 0;
     recurring.forEach(function(r){
       pendingOccurrences(r, mid).forEach(function(o){
-        entries.push({ id: newId(), date: o.year + '-' + pad(o.month+1) + '-' + pad(o.day), type: 'expense', category: r.category, memo: r.name, amount: r.amount, createdAt: Date.now(), auto: true });
+        entries.push({ id: newId(), date: o.year + '-' + pad(o.month+1) + '-' + pad(o.day), type: 'expense', category: r.category, memo: r.name, amount: r.amount, createdAt: Date.now(), updatedAt: Date.now(), auto: true });
         r.lastRecordedMonth = o.monthKey;
+        r.updatedAt = Date.now();
         count++;
       });
     });
@@ -1279,12 +1372,14 @@
         if(!r) return;
         if(r.lastRecordedMonth === realMonth){
           r.lastRecordedMonth = null;
+          r.updatedAt = Date.now();
           saveJSON(RECURRING_KEY, recurring);
           renderRecurring();
           return;
         }
-        entries.push({ id: newId(), date: todayStr(), type: 'expense', category: r.category, memo: r.name, amount: r.amount, createdAt: Date.now(), auto: true });
+        entries.push({ id: newId(), date: todayStr(), type: 'expense', category: r.category, memo: r.name, amount: r.amount, createdAt: Date.now(), updatedAt: Date.now(), auto: true });
         r.lastRecordedMonth = realMonth;
+        r.updatedAt = Date.now();
         saveJSON(ENTRIES_KEY, entries);
         saveJSON(RECURRING_KEY, recurring);
         viewYear = today.getFullYear(); viewMonth = today.getMonth();
@@ -1316,14 +1411,52 @@
     var balance = parseFloat(el.depositBalance.value);
     if(!name){ el.depositName.focus(); return; }
     if(isNaN(balance) || balance < 0) balance = 0;
-    deposits.push({ id: newId(), name: name, balance: Math.round(balance), createdAt: Date.now() });
+    deposits.push({ id: newId(), name: name, balance: Math.round(balance), createdAt: Date.now(), updatedAt: Date.now() });
     saveJSON(DEPOSITS_KEY, deposits);
     el.depositName.value = ''; el.depositBalance.value = '';
     el.depositForm.classList.remove('open');
     render();
   });
 
+  var expandedDepositId = null;
+
+  function buildDepositDetailHtml(dep){
+    var txns = entries.filter(function(e){ return e.depositId === dep.id; });
+    if(txns.length === 0){
+      return '<div class="dep-detail"><div class="dep-detail-empty">아직 입출금 내역이 없어요.</div></div>';
+    }
+    var byMonth = {};
+    txns.forEach(function(e){
+      var mKey = e.date.slice(0, 7);
+      (byMonth[mKey] = byMonth[mKey] || []).push(e);
+    });
+    var months = Object.keys(byMonth).sort().reverse();
+    var inner = '';
+    months.forEach(function(mKey){
+      var parts = mKey.split('-');
+      var label = parts[0] + '년 ' + parseInt(parts[1], 10) + '월';
+      var monthTxns = byMonth[mKey].slice().sort(function(a, b){ return b.date.localeCompare(a.date) || b.createdAt - a.createdAt; });
+      var monthNet = 0;
+      var rows = '';
+      monthTxns.forEach(function(e){
+        var d = new Date(e.date + 'T00:00:00');
+        var isIn = e.type === 'expense'; // 입금은 예금지출(expense)로 기록됨
+        monthNet += isIn ? e.amount : -e.amount;
+        rows +=
+          '<div class="dep-detail-row"><span>' + (d.getMonth()+1) + '월 ' + d.getDate() + '일 · ' + (isIn ? '입금' : '출금') + '</span>' +
+          '<span class="amt ' + (isIn ? 'in' : 'out') + '">' + (isIn ? '+' : '-') + fmtWon(e.amount) + '</span></div>';
+      });
+      inner +=
+        '<div class="dep-detail-month">' + label + ' <span class="net">(순증감 ' + (monthNet >= 0 ? '+' : '-') + fmtWon(Math.abs(monthNet)) + ')</span></div>' + rows;
+    });
+    return '<div class="dep-detail">' + inner + '</div>';
+  }
+
   function renderDeposits(){
+    var total = deposits.reduce(function(s, d){ return s + d.balance; }, 0);
+    if(el.depositTotalAmount) el.depositTotalAmount.textContent = fmtWon(total);
+    if(el.depositCount) el.depositCount.textContent = deposits.length + '개';
+
     el.depositList.innerHTML = '';
     el.depositEmpty.hidden = deposits.length > 0;
     deposits.forEach(function(dep){
@@ -1342,6 +1475,7 @@
         return;
       }
 
+      var isExpanded = expandedDepositId === dep.id;
       card.innerHTML =
         '<div class="dep-top">' +
           '<span class="dot" style="background:' + color + '"></span>' +
@@ -1353,8 +1487,18 @@
           '<input type="number" placeholder="금액" min="0" data-amount-for="' + dep.id + '">' +
           '<button type="button" class="dep-in-btn" data-in="' + dep.id + '">입금</button>' +
           '<button type="button" class="dep-out-btn" data-out="' + dep.id + '">출금</button>' +
-        '</div>';
+        '</div>' +
+        '<button type="button" class="dep-detail-toggle" data-toggle="' + dep.id + '">' + (isExpanded ? '월별 내역 숨기기 ▴' : '월별 내역 보기 ▾') + '</button>' +
+        (isExpanded ? buildDepositDetailHtml(dep) : '');
       el.depositList.appendChild(card);
+    });
+
+    el.depositList.querySelectorAll('.dep-detail-toggle').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        var id = btn.getAttribute('data-toggle');
+        expandedDepositId = (expandedDepositId === id) ? null : id;
+        renderDeposits();
+      });
     });
 
     el.depositList.querySelectorAll('.edit-btn').forEach(function(btn){
@@ -1375,7 +1519,7 @@
         var input = document.getElementById('renameInput');
         if(dep && input){
           var v = input.value.trim();
-          if(v) dep.name = v;
+          if(v){ dep.name = v; dep.updatedAt = Date.now(); }
           saveJSON(DEPOSITS_KEY, deposits);
         }
         editingDepositId = null;
@@ -1394,7 +1538,8 @@
         if(!dep || !amount || amount <= 0){ if(input) input.focus(); return; }
         amount = Math.round(amount);
         dep.balance += amount;
-        entries.push({ id: newId(), date: todayStr(), type: 'expense', category: DEPOSIT_CATEGORY, memo: dep.name, amount: amount, createdAt: Date.now(), depositId: dep.id });
+        dep.updatedAt = Date.now();
+        entries.push({ id: newId(), date: todayStr(), type: 'expense', category: DEPOSIT_CATEGORY, memo: dep.name, amount: amount, createdAt: Date.now(), updatedAt: Date.now(), depositId: dep.id });
         saveJSON(DEPOSITS_KEY, deposits);
         saveJSON(ENTRIES_KEY, entries);
         viewYear = today.getFullYear(); viewMonth = today.getMonth();
@@ -1410,7 +1555,8 @@
         if(!dep || !amount || amount <= 0){ if(input) input.focus(); return; }
         amount = Math.round(amount);
         dep.balance = Math.max(0, dep.balance - amount);
-        entries.push({ id: newId(), date: todayStr(), type: 'income', category: WITHDRAW_CATEGORY, memo: dep.name, amount: amount, createdAt: Date.now(), depositId: dep.id });
+        dep.updatedAt = Date.now();
+        entries.push({ id: newId(), date: todayStr(), type: 'income', category: WITHDRAW_CATEGORY, memo: dep.name, amount: amount, createdAt: Date.now(), updatedAt: Date.now(), depositId: dep.id });
         saveJSON(DEPOSITS_KEY, deposits);
         saveJSON(ENTRIES_KEY, entries);
         viewYear = today.getFullYear(); viewMonth = today.getMonth();
@@ -1422,6 +1568,7 @@
         var id = btn.getAttribute('data-del');
         deposits = deposits.filter(function(x){ return x.id !== id; });
         markDeleted(id);
+        if(expandedDepositId === id) expandedDepositId = null;
         saveJSON(DEPOSITS_KEY, deposits);
         renderDeposits();
         renderDepositCompareChart();
@@ -1699,4 +1846,3 @@
 </script>
 </body>
 </html>
-
