@@ -344,6 +344,24 @@
   .form-cancel-btn{background:var(--line-soft);color:var(--muted);}
   .form-save-btn{background:var(--primary);color:#fff;}
 
+  /* ---------- scope selectors (정기 지출 수정/삭제 범위) ---------- */
+  .scope-select{display:flex;gap:6px;margin-bottom:14px;}
+  .scope-select button{
+    flex:1;border:1px solid var(--line);background:var(--card-tint);color:var(--ink);
+    font-family:var(--font-body);font-size:11.5px;padding:9px 4px;border-radius:8px;cursor:pointer;
+  }
+  .scope-select button.active{background:var(--primary);color:#fff;border-color:transparent;}
+  .item-row-wrap{margin-bottom:8px;}
+  .delete-scope-panel{
+    background:var(--card-tint);border:1px solid var(--line-soft);border-radius:12px;padding:12px;
+  }
+  .scope-del-btn{
+    display:block;width:100%;text-align:left;border:1px solid var(--line);background:var(--card);
+    color:var(--ink);font-family:var(--font-body);font-size:12.5px;padding:10px 12px;border-radius:9px;
+    cursor:pointer;margin-bottom:7px;
+  }
+  .scope-del-btn.danger{color:var(--expense);border-color:var(--expense-bg);}
+
   .empty-small{font-size:12px;color:var(--muted);padding:2px 2px 12px;}
 
   /* ---------- ledger list ---------- */
@@ -1333,7 +1351,7 @@
     var count = 0;
     recurring.forEach(function(r){
       pendingOccurrences(r, mid).forEach(function(o){
-        entries.push({ id: newId(), date: o.year + '-' + pad(o.month+1) + '-' + pad(o.day), type: 'expense', category: r.category, memo: r.name, amount: r.amount, createdAt: Date.now(), updatedAt: Date.now(), auto: true });
+        entries.push({ id: newId(), date: o.year + '-' + pad(o.month+1) + '-' + pad(o.day), type: 'expense', category: r.category, memo: r.name, amount: r.amount, createdAt: Date.now(), updatedAt: Date.now(), auto: true, recurringId: r.id });
         r.lastRecordedMonth = o.monthKey;
         r.updatedAt = Date.now();
         count++;
@@ -1347,6 +1365,121 @@
     return count;
   }
 
+  // r(정기 지출)에 연결된, 실제 오늘 기준 이번 달의 기록 항목을 찾는다.
+  function findRecurringMonthEntry(r){
+    var realMonth = monthKey(today.getFullYear(), today.getMonth());
+    var linked = entries.find(function(e){ return e.recurringId === r.id && e.date.indexOf(realMonth) === 0; });
+    if(linked) return linked;
+    // recurringId 연결 기능이 생기기 전에 자동 기록된 예전 항목은 이름+카테고리로 찾아서 지금 연결해준다.
+    var fallback = entries.find(function(e){
+      return !e.recurringId && e.date.indexOf(realMonth) === 0 && e.type === 'expense' &&
+        e.category === r.category && e.memo === r.name;
+    });
+    if(fallback) fallback.recurringId = r.id;
+    return fallback;
+  }
+
+  var recurringPanelId = null;   // 수정/삭제 패널이 열린 정기 지출 id
+  var recurringPanelMode = null; // 'edit' | 'delete'
+
+  function closeRecurringPanel(){ recurringPanelId = null; recurringPanelMode = null; }
+
+  // 과거(이번 달 포함) 전체에서, recurringId가 없는데 이름·카테고리가 일치하는 예전 항목을 전부 연결해준다.
+  function backfillRecurringLinksAll(r){
+    entries.forEach(function(e){
+      if(!e.recurringId && e.type === 'expense' && e.category === r.category && e.memo === r.name){
+        e.recurringId = r.id;
+      }
+    });
+  }
+
+  function applyRecurringEditScope(r, fields, scope){
+    var realMonth = monthKey(today.getFullYear(), today.getMonth());
+    if(scope === 'all') backfillRecurringLinksAll(r);
+    var monthEntry = findRecurringMonthEntry(r);
+
+    if(scope === 'thisMonth'){
+      // 템플릿(다음 달 이후 기본값)은 그대로 두고, 이번 달 기록만 새 값으로 맞춘다.
+      if(monthEntry){
+        monthEntry.category = fields.category;
+        monthEntry.memo = fields.name;
+        monthEntry.amount = fields.amount;
+        monthEntry.updatedAt = Date.now();
+      } else {
+        entries.push({ id: newId(), date: todayStr(), type: 'expense', category: fields.category, memo: fields.name, amount: fields.amount, createdAt: Date.now(), updatedAt: Date.now(), auto: true, recurringId: r.id });
+      }
+      r.lastRecordedMonth = realMonth;
+      r.updatedAt = Date.now();
+      saveJSON(ENTRIES_KEY, entries);
+      saveJSON(RECURRING_KEY, recurring);
+    } else if(scope === 'thisAndFuture'){
+      r.name = fields.name; r.category = fields.category; r.amount = fields.amount; r.day = fields.day;
+      r.updatedAt = Date.now();
+      if(monthEntry){
+        monthEntry.category = fields.category;
+        monthEntry.memo = fields.name;
+        monthEntry.amount = fields.amount;
+        monthEntry.updatedAt = Date.now();
+        saveJSON(ENTRIES_KEY, entries);
+      }
+      saveJSON(RECURRING_KEY, recurring);
+    } else { // 'all' — 과거 기록까지 전부
+      r.name = fields.name; r.category = fields.category; r.amount = fields.amount; r.day = fields.day;
+      r.updatedAt = Date.now();
+      var changed = false;
+      entries.forEach(function(e){
+        if(e.recurringId === r.id){
+          e.category = fields.category; e.memo = fields.name; e.amount = fields.amount; e.updatedAt = Date.now();
+          changed = true;
+        }
+      });
+      if(changed) saveJSON(ENTRIES_KEY, entries);
+      saveJSON(RECURRING_KEY, recurring);
+    }
+    closeRecurringPanel();
+    viewYear = today.getFullYear(); viewMonth = today.getMonth();
+    render();
+  }
+
+  function deleteRecurringScope(r, scope){
+    var realMonth = monthKey(today.getFullYear(), today.getMonth());
+    if(scope === 'all') backfillRecurringLinksAll(r);
+    var monthEntry = findRecurringMonthEntry(r);
+
+    if(scope === 'thisMonth'){
+      // 이번 달 기록만 지우고, 템플릿은 그대로 둬서 다음 달부터는 계속된다.
+      if(monthEntry){
+        entries = entries.filter(function(e){ return e.id !== monthEntry.id; });
+        markDeleted(monthEntry.id);
+        saveJSON(ENTRIES_KEY, entries);
+      }
+      r.lastRecordedMonth = realMonth; // 이번 달은 이미 처리된 것으로 표시해 자동 기록이 다시 채우지 않도록
+      r.updatedAt = Date.now();
+      saveJSON(RECURRING_KEY, recurring);
+    } else if(scope === 'thisAndFuture'){
+      // 이번 달 기록 삭제 + 템플릿 자체를 삭제(다음 달부터 자동 기록 중단). 과거 기록은 남긴다.
+      if(monthEntry){
+        entries = entries.filter(function(e){ return e.id !== monthEntry.id; });
+        markDeleted(monthEntry.id);
+        saveJSON(ENTRIES_KEY, entries);
+      }
+      recurring = recurring.filter(function(x){ return x.id !== r.id; });
+      markDeleted(r.id);
+      saveJSON(RECURRING_KEY, recurring);
+    } else { // 'all' — 과거 기록까지 전부 삭제
+      var toDelete = entries.filter(function(e){ return e.recurringId === r.id; }).map(function(e){ return e.id; });
+      entries = entries.filter(function(e){ return e.recurringId !== r.id; });
+      toDelete.forEach(markDeleted);
+      recurring = recurring.filter(function(x){ return x.id !== r.id; });
+      markDeleted(r.id);
+      saveJSON(ENTRIES_KEY, entries);
+      saveJSON(RECURRING_KEY, recurring);
+    }
+    closeRecurringPanel();
+    viewYear = today.getFullYear(); viewMonth = today.getMonth();
+    render();
+  }
+
   function renderRecurring(){
     var realMonth = monthKey(today.getFullYear(), today.getMonth());
     el.recurringList.innerHTML = '';
@@ -1355,15 +1488,85 @@
       var done = r.lastRecordedMonth === realMonth;
       var color = categoryColor(r.category);
       var row = document.createElement('div');
+      row.className = 'item-row-wrap';
+
+      if(recurringPanelId === r.id && recurringPanelMode === 'edit'){
+        var catOptions = catList('expense').filter(function(c){ return c !== DEPOSIT_CATEGORY; })
+          .map(function(c){ return '<option value="' + escapeHtml(c) + '"' + (c === r.category ? ' selected' : '') + '>' + escapeHtml(c) + '</option>'; }).join('');
+        row.innerHTML =
+          '<div class="recurring-form open" style="margin-top:0;padding-top:0;border-top:none;">' +
+            '<input type="text" id="rpName" value="' + escapeHtml(r.name) + '">' +
+            '<div class="field-row">' +
+              '<div class="field"><label>카테고리</label><select id="rpCategory">' + catOptions + '</select></div>' +
+              '<div class="field"><label>금액</label><input type="number" id="rpAmount" value="' + r.amount + '" min="0"></div>' +
+              '<div class="field"><label>결제일</label><input type="number" id="rpDay" value="' + (r.day||1) + '" min="1" max="31"></div>' +
+            '</div>' +
+            '<p class="section-hint" style="margin-bottom:8px;">적용 범위를 고르세요. 관리비처럼 이번 달만 금액이 다르면 "이번 달만"을 고르세요.</p>' +
+            '<div class="scope-select" id="rpScope">' +
+              '<button type="button" data-scope="thisMonth" class="active">이번 달만</button>' +
+              '<button type="button" data-scope="thisAndFuture">이번 달부터</button>' +
+              '<button type="button" data-scope="all">전체(과거 포함)</button>' +
+            '</div>' +
+            '<div class="form-actions">' +
+              '<button type="button" class="form-cancel-btn" id="rpCancel">취소</button>' +
+              '<button type="button" class="form-save-btn" id="rpSave">저장</button>' +
+            '</div>' +
+          '</div>';
+        el.recurringList.appendChild(row);
+        var scopeSel = 'thisMonth';
+        row.querySelectorAll('#rpScope button').forEach(function(b){
+          b.addEventListener('click', function(){
+            scopeSel = b.getAttribute('data-scope');
+            row.querySelectorAll('#rpScope button').forEach(function(x){ x.classList.toggle('active', x === b); });
+          });
+        });
+        row.querySelector('#rpCancel').addEventListener('click', function(){ closeRecurringPanel(); renderRecurring(); });
+        row.querySelector('#rpSave').addEventListener('click', function(){
+          var name = row.querySelector('#rpName').value.trim();
+          var category = row.querySelector('#rpCategory').value;
+          var amount = parseFloat(row.querySelector('#rpAmount').value);
+          var day = parseInt(row.querySelector('#rpDay').value, 10);
+          if(!name || !amount || amount <= 0){ return; }
+          if(!day || day < 1 || day > 31) day = r.day || 1;
+          applyRecurringEditScope(r, { name: name, category: category, amount: Math.round(amount), day: day }, scopeSel);
+        });
+        return;
+      }
+
+      if(recurringPanelId === r.id && recurringPanelMode === 'delete'){
+        row.innerHTML =
+          '<div class="delete-scope-panel">' +
+            '<p class="section-hint" style="margin-bottom:10px;">"' + escapeHtml(r.name) + '"을(를) 얼마나 지울까요?</p>' +
+            '<button type="button" class="scope-del-btn" data-scope="thisMonth">이번 달만 삭제 (다음 달부터는 계속돼요)</button>' +
+            '<button type="button" class="scope-del-btn" data-scope="thisAndFuture">이번 달부터 중단 (과거 기록은 남아요)</button>' +
+            '<button type="button" class="scope-del-btn danger" data-scope="all">전체 삭제 (과거 기록까지 다 지워요)</button>' +
+            '<button type="button" class="form-cancel-btn" id="rpDelCancel" style="width:100%;margin-top:8px;">취소</button>' +
+          '</div>';
+        el.recurringList.appendChild(row);
+        row.querySelectorAll('.scope-del-btn').forEach(function(b){
+          b.addEventListener('click', function(){ deleteRecurringScope(r, b.getAttribute('data-scope')); });
+        });
+        row.querySelector('#rpDelCancel').addEventListener('click', function(){ closeRecurringPanel(); renderRecurring(); });
+        return;
+      }
+
       row.className = 'item-row';
       row.innerHTML =
         '<span class="dot" style="background:' + color + '"></span>' +
-        '<span class="i-main"><span class="i-name"><span class="label-text">' + escapeHtml(r.name) + '</span></span>' +
+        '<span class="i-main"><span class="i-name"><span class="label-text">' + escapeHtml(r.name) + '</span><button type="button" class="edit-btn" data-edit="' + r.id + '">✎</button></span>' +
         '<span class="i-meta">' + escapeHtml(r.category) + ' · 매월 ' + (r.day || 1) + '일</span></span>' +
         '<span class="i-amount">' + fmtWon(r.amount) + '</span>' +
         '<button type="button" class="i-action' + (done ? ' done' : '') + '" data-id="' + r.id + '">' + (done ? '기록됨 ✓' : '지금 기록') + '</button>' +
         '<button type="button" class="i-del" data-del="' + r.id + '">✕</button>';
       el.recurringList.appendChild(row);
+    });
+
+    el.recurringList.querySelectorAll('.edit-btn').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        recurringPanelId = btn.getAttribute('data-edit');
+        recurringPanelMode = 'edit';
+        renderRecurring();
+      });
     });
     el.recurringList.querySelectorAll('.i-action').forEach(function(btn){
       btn.addEventListener('click', function(){
@@ -1377,7 +1580,7 @@
           renderRecurring();
           return;
         }
-        entries.push({ id: newId(), date: todayStr(), type: 'expense', category: r.category, memo: r.name, amount: r.amount, createdAt: Date.now(), updatedAt: Date.now(), auto: true });
+        entries.push({ id: newId(), date: todayStr(), type: 'expense', category: r.category, memo: r.name, amount: r.amount, createdAt: Date.now(), updatedAt: Date.now(), auto: true, recurringId: r.id });
         r.lastRecordedMonth = realMonth;
         r.updatedAt = Date.now();
         saveJSON(ENTRIES_KEY, entries);
@@ -1388,10 +1591,8 @@
     });
     el.recurringList.querySelectorAll('.i-del').forEach(function(btn){
       btn.addEventListener('click', function(){
-        var id = btn.getAttribute('data-del');
-        recurring = recurring.filter(function(x){ return x.id !== id; });
-        markDeleted(id);
-        saveJSON(RECURRING_KEY, recurring);
+        recurringPanelId = btn.getAttribute('data-del');
+        recurringPanelMode = 'delete';
         renderRecurring();
       });
     });
