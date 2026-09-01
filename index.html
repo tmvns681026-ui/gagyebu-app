@@ -176,6 +176,14 @@
   .card-section h2::before, .ledger-section h2::before{content:"";width:5px;height:5px;background:var(--primary);border-radius:50%;display:inline-block;}
   .section-hint{font-size:12.5px;color:var(--muted);margin:0 0 14px;line-height:1.5;}
 
+  .collapsible-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+  .collapse-toggle{
+    border:none;background:var(--line-soft);color:var(--ink-deep);width:26px;height:26px;border-radius:50%;
+    font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;
+    transition:transform .15s ease;
+  }
+  .collapse-toggle.collapsed{transform:rotate(-90deg);}
+
   /* ---------- add entry ---------- */
   .type-toggle{display:flex;background:var(--line-soft);border-radius:10px;padding:3px;margin-bottom:14px;}
   .type-toggle button{
@@ -591,28 +599,34 @@
   </section>
 
   <section class="card-section">
-    <h2>정기 지출 (구독 등)</h2>
-    <p class="section-hint">매달 나가는 구독료·공과금 등을 등록해두면, 지정한 날짜가 지난 뒤 앱을 열 때 자동으로 지출에 기록돼요. 그 사이 건너뛴 달이 있어도 지난 달들을 한꺼번에 채워 넣어요.</p>
-    <div id="recurringList"></div>
-    <div class="empty-small" id="recurringEmpty" hidden>등록된 정기 지출이 없어요.</div>
-    <button type="button" class="add-recurring-btn" id="showRecurringForm">+ 정기 지출 추가</button>
-    <div class="recurring-form" id="recurringForm">
-      <input type="text" id="recurringName" placeholder="예: 넷플릭스, 통신비">
-      <div class="field-row">
-        <div class="field"><label for="recurringCategory">카테고리</label><select id="recurringCategory"></select></div>
-        <div class="field"><label for="recurringAmount">금액</label><input type="number" id="recurringAmount" placeholder="0" min="0"></div>
-        <div class="field"><label for="recurringDay">결제일</label><input type="number" id="recurringDay" placeholder="25" min="1" max="31"></div>
-      </div>
-      <div class="card-toggle-row" id="recurringCardToggleRow">
-        <label class="card-toggle-label">
-          <input type="checkbox" id="recurringIsCardCheckbox">
-          <span>카드로 결제돼요</span>
-        </label>
-        <input type="text" class="card-name-input" id="recurringCardNameInput" placeholder="카드 이름 (예: 신한카드)" list="cardNameList" hidden>
-      </div>
-      <div class="form-actions">
-        <button type="button" class="form-cancel-btn" id="recurringCancel">취소</button>
-        <button type="button" class="form-save-btn" id="recurringSave">저장</button>
+    <div class="collapsible-head">
+      <h2 style="margin-bottom:0;">정기 지출 (구독 등)</h2>
+      <button type="button" class="collapse-toggle" id="recurringCollapseToggle" aria-label="접기/펼치기">▾</button>
+    </div>
+    <div class="empty-small" id="recurringCollapsedSummary" hidden></div>
+    <div id="recurringBody">
+      <p class="section-hint">매달 나가는 구독료·공과금 등을 등록해두면, 지정한 날짜가 지난 뒤 앱을 열 때 자동으로 지출에 기록돼요. 그 사이 건너뛴 달이 있어도 지난 달들을 한꺼번에 채워 넣어요.</p>
+      <div id="recurringList"></div>
+      <div class="empty-small" id="recurringEmpty" hidden>등록된 정기 지출이 없어요.</div>
+      <button type="button" class="add-recurring-btn" id="showRecurringForm">+ 정기 지출 추가</button>
+      <div class="recurring-form" id="recurringForm">
+        <input type="text" id="recurringName" placeholder="예: 넷플릭스, 통신비">
+        <div class="field-row">
+          <div class="field"><label for="recurringCategory">카테고리</label><select id="recurringCategory"></select></div>
+          <div class="field"><label for="recurringAmount">금액</label><input type="number" id="recurringAmount" placeholder="0" min="0"></div>
+          <div class="field"><label for="recurringDay">결제일</label><input type="number" id="recurringDay" placeholder="25" min="1" max="31"></div>
+        </div>
+        <div class="card-toggle-row" id="recurringCardToggleRow">
+          <label class="card-toggle-label">
+            <input type="checkbox" id="recurringIsCardCheckbox">
+            <span>카드로 결제돼요</span>
+          </label>
+          <input type="text" class="card-name-input" id="recurringCardNameInput" placeholder="카드 이름 (예: 신한카드)" list="cardNameList" hidden>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="form-cancel-btn" id="recurringCancel">취소</button>
+          <button type="button" class="form-save-btn" id="recurringSave">저장</button>
+        </div>
       </div>
     </div>
   </section>
@@ -1032,6 +1046,9 @@
     cardUsageBars: document.getElementById('cardUsageBars'),
     compareChart: document.getElementById('compareChart'),
 
+    recurringCollapseToggle: document.getElementById('recurringCollapseToggle'),
+    recurringCollapsedSummary: document.getElementById('recurringCollapsedSummary'),
+    recurringBody: document.getElementById('recurringBody'),
     recurringList: document.getElementById('recurringList'),
     recurringEmpty: document.getElementById('recurringEmpty'),
     showRecurringForm: document.getElementById('showRecurringForm'),
@@ -1581,6 +1598,32 @@
   function todayMidnight(){ return new Date(today.getFullYear(), today.getMonth(), today.getDate()); }
 
   // ========== 정기 지출 (구독 등, 항상 지출) ==========
+  var RECURRING_COLLAPSED_KEY = 'gagyebu_recurring_collapsed_v1'; // 기기별 UI 상태 — 동기화 대상 아님
+  var recurringCollapsed = localStorage.getItem(RECURRING_COLLAPSED_KEY) !== 'false'; // 처음엔 접힌 상태가 기본값
+
+  function applyRecurringCollapseState(){
+    el.recurringBody.hidden = recurringCollapsed;
+    el.recurringCollapsedSummary.hidden = !recurringCollapsed;
+    el.recurringCollapseToggle.classList.toggle('collapsed', recurringCollapsed);
+    if(recurringCollapsed){
+      var count = recurring.length;
+      var total = recurring.reduce(function(s, r){ return s + r.amount; }, 0);
+      el.recurringCollapsedSummary.textContent = count === 0
+        ? '등록된 정기 지출이 없어요. 펼쳐서 추가해보세요.'
+        : count + '개 항목 · 월 합계 ' + fmtWon(total) + ' — 펼쳐서 보기/수정';
+    }
+  }
+  el.recurringCollapseToggle.addEventListener('click', function(){
+    recurringCollapsed = !recurringCollapsed;
+    localStorage.setItem(RECURRING_COLLAPSED_KEY, String(recurringCollapsed));
+    applyRecurringCollapseState();
+  });
+  el.recurringCollapsedSummary.addEventListener('click', function(){
+    recurringCollapsed = false;
+    localStorage.setItem(RECURRING_COLLAPSED_KEY, String(recurringCollapsed));
+    applyRecurringCollapseState();
+  });
+
   function renderRecurringCategoryOptions(){
     var list = catList('expense').filter(function(c){ return c !== DEPOSIT_CATEGORY; });
     el.recurringCategory.innerHTML = '';
@@ -1766,6 +1809,7 @@
   }
 
   function renderRecurring(){
+    applyRecurringCollapseState();
     var realMonth = monthKey(today.getFullYear(), today.getMonth());
     el.recurringList.innerHTML = '';
     el.recurringEmpty.hidden = recurring.length > 0;
