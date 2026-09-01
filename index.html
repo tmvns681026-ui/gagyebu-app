@@ -477,9 +477,56 @@
   }
   .toast.show{transform:translateX(-50%) translateY(0);}
   .toast button{background:none;border:none;color:var(--gold);font-weight:700;font-size:13px;cursor:pointer;text-decoration:underline;}
+
+  /* ---------- lock screen ---------- */
+  .lock-overlay{
+    position:fixed;inset:0;z-index:200;
+    background:linear-gradient(160deg, var(--primary-deep), var(--primary));
+    display:flex;align-items:center;justify-content:center;padding:20px;
+  }
+  .lock-overlay[hidden]{display:none;}
+  .lock-card{
+    width:100%;max-width:340px;background:var(--card);border-radius:20px;padding:28px 24px;text-align:center;
+    box-shadow:0 12px 32px rgba(0,0,0,0.25);
+  }
+  .lock-icon{font-size:34px;margin-bottom:8px;}
+  .lock-card h2{font-family:var(--font-display);font-size:18px;color:var(--ink-deep);margin:0 0 18px;}
+  .lock-card input{
+    width:100%;border:1px solid var(--line);background:var(--card-tint);border-radius:10px;
+    padding:12px;font-size:16px;text-align:center;letter-spacing:4px;font-family:var(--font-body);
+    color:var(--ink-deep);margin-bottom:12px;
+  }
+  .lock-card input:focus{outline:2px solid var(--primary);outline-offset:1px;}
+  .lock-error{color:var(--expense);font-size:12.5px;margin:-4px 0 12px;}
+  .lock-forgot-link{
+    border:none;background:none;color:var(--muted);font-size:12px;text-decoration:underline;
+    cursor:pointer;margin-top:14px;font-family:var(--font-body);
+  }
+  .lock-recover-panel{margin-top:16px;padding-top:16px;border-top:1px dashed var(--line);text-align:left;}
+  .lock-recover-panel p{font-size:13px;color:var(--ink-deep);margin:0 0 10px;font-weight:700;}
 </style>
 </head>
 <body>
+
+<div class="lock-overlay" id="lockOverlay" hidden>
+  <div class="lock-card">
+    <div class="lock-icon">🔒</div>
+    <h2>가계부 잠금</h2>
+    <input type="password" id="lockPinInput" inputmode="numeric" placeholder="비밀번호" autocomplete="off">
+    <p class="lock-error" id="lockError" hidden>비밀번호가 틀렸어요</p>
+    <button type="button" class="save-btn" id="lockUnlockBtn">잠금 해제</button>
+    <button type="button" class="lock-forgot-link" id="lockForgotBtn">비밀번호를 잊으셨나요?</button>
+    <div class="lock-recover-panel" id="lockRecoverPanel" hidden>
+      <p id="lockHintQuestion"></p>
+      <input type="text" id="lockRecoverAnswer" placeholder="답변 입력" autocomplete="off">
+      <div class="form-actions">
+        <button type="button" class="form-cancel-btn" id="lockRecoverCancel">취소</button>
+        <button type="button" class="form-save-btn" id="lockRecoverSubmit">확인</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="app">
 
   <header class="topbar">
@@ -640,6 +687,26 @@
   </div>
 
   <section class="card-section">
+    <h2>화면 잠금</h2>
+    <p class="section-hint">이 기기에서 앱을 열 때 비밀번호를 입력해야 보이도록 설정해요. 데이터를 암호화하는 건 아니라서 완전한 보안은 아니고, 다른 사람이 얼핏 보는 걸 막는 용도예요. 이 설정은 기기별로 따로 적용되고 다른 기기와 동기화되지 않아요.</p>
+    <div class="sync-status" id="lockStatus">설정 안 됨</div>
+    <div class="field-row">
+      <div class="field"><label for="setPinInput">새 비밀번호</label><input type="password" id="setPinInput" inputmode="numeric" placeholder="4자리 이상" autocomplete="off"></div>
+      <div class="field"><label for="setPinConfirm">비밀번호 확인</label><input type="password" id="setPinConfirm" inputmode="numeric" autocomplete="off"></div>
+    </div>
+    <div class="field-row">
+      <div class="field" style="flex:1 1 100%;"><label for="setPinHintQ">복구 질문 (잊었을 때 사용)</label><input type="text" id="setPinHintQ" placeholder="예: 제일 좋아하는 음식은?"></div>
+    </div>
+    <div class="field-row">
+      <div class="field" style="flex:1 1 100%;"><label for="setPinHintA">복구 질문 답변</label><input type="text" id="setPinHintA"></div>
+    </div>
+    <div class="form-actions">
+      <button type="button" class="form-cancel-btn" id="removePinBtn">잠금 해제(삭제)</button>
+      <button type="button" class="form-save-btn" id="savePinBtn">잠금 저장</button>
+    </div>
+  </section>
+
+  <section class="card-section">
     <h2>깃허브 자동 동기화</h2>
     <p class="section-hint">깃허브 저장소를 한 번 연결해두면, 이 기기에서 기록을 바꿀 때마다 자동으로 올라가고 앱을 열 때 다른 기기의 변경사항도 자동으로 받아와요. 토큰은 이 기기의 브라우저에만 저장되고 파일 자체에는 절대 포함되지 않아요.</p>
     <div class="field-row">
@@ -690,6 +757,8 @@
   var DEPOSITS_KEY = 'gagyebu_deposits_v1';
   var DELETED_KEY = 'gagyebu_deleted_ids_v1'; // 삭제된 항목의 id 기록 (동기화 시 되살아나지 않게 하기 위함)
   var GITHUB_CONFIG_KEY = 'gagyebu_github_config_v1'; // 기기별 설정 — 동기화 대상 아님
+  var PIN_KEY = 'gagyebu_pin_hash_v1'; // 기기별 화면 잠금 — 동기화 대상 아님
+  var PIN_HINT_KEY = 'gagyebu_pin_hint_v1'; // 기기별 복구 질문 — 동기화 대상 아님
   var DEPOSIT_CATEGORY = '예금지출';
   var WITHDRAW_CATEGORY = '예금환급';
   var GITHUB_API = 'https://api.github.com';
@@ -776,6 +845,106 @@
     saveJSON(CATS_KEY, merged);
     return merged;
   })();
+
+  // ========== 화면 잠금 (PIN) ==========
+  function simpleHashFallback(str){
+    var hash = 5381;
+    for(var i = 0; i < str.length; i++){ hash = ((hash * 33) ^ str.charCodeAt(i)) >>> 0; }
+    return 'f' + hash.toString(16);
+  }
+  function sha256Hex(str){
+    // 일부 구형 브라우저/웹뷰는 crypto.subtle을 지원하지 않을 수 있어, 그 경우 대체 해시로 넘어가
+    // 화면이 먹통이 되지 않도록 한다.
+    if(window.crypto && window.crypto.subtle){
+      try{
+        var enc = new TextEncoder().encode(str);
+        return crypto.subtle.digest('SHA-256', enc).then(function(buf){
+          return Array.prototype.map.call(new Uint8Array(buf), function(b){ return b.toString(16).padStart(2, '0'); }).join('');
+        }).catch(function(){ return simpleHashFallback(str); });
+      }catch(e){
+        return Promise.resolve(simpleHashFallback(str));
+      }
+    }
+    return Promise.resolve(simpleHashFallback(str));
+  }
+  function updateLockStatus(){
+    if(!el.lockStatus) return;
+    el.lockStatus.textContent = localStorage.getItem(PIN_KEY) ? '설정됨 (이 기기에만 적용)' : '설정 안 됨';
+  }
+  el.savePinBtn.addEventListener('click', function(){
+    var pin = el.setPinInput.value;
+    var confirmPin = el.setPinConfirm.value;
+    var hintQ = el.setPinHintQ.value.trim();
+    var hintA = el.setPinHintA.value.trim();
+    if(!pin || pin.length < 4){ showToast('비밀번호는 4자리 이상으로 설정해주세요'); return; }
+    if(pin !== confirmPin){ showToast('비밀번호가 서로 달라요'); return; }
+    if(!hintQ || !hintA){ showToast('잊어버릴 경우를 위해 복구 질문도 입력해주세요'); return; }
+    Promise.all([sha256Hex(pin), sha256Hex(hintA.toLowerCase())]).then(function(hashes){
+      localStorage.setItem(PIN_KEY, hashes[0]);
+      localStorage.setItem(PIN_HINT_KEY, JSON.stringify({ question: hintQ, answerHash: hashes[1] }));
+      el.setPinInput.value = ''; el.setPinConfirm.value = ''; el.setPinHintQ.value = ''; el.setPinHintA.value = '';
+      updateLockStatus();
+      showToast('화면 잠금이 설정됐어요');
+    });
+  });
+  el.removePinBtn.addEventListener('click', function(){
+    localStorage.removeItem(PIN_KEY);
+    localStorage.removeItem(PIN_HINT_KEY);
+    updateLockStatus();
+    showToast('화면 잠금이 해제됐어요');
+  });
+
+  function startAppAfterUnlock(){
+    el.lockOverlay.hidden = true;
+    if(githubConfigured()){
+      syncWithGitHub({ toast: false, rerender: false }).then(finishStartup);
+    } else {
+      finishStartup();
+    }
+  }
+  el.lockUnlockBtn.addEventListener('click', function(){
+    var pin = el.lockPinInput.value;
+    sha256Hex(pin).then(function(hash){
+      if(hash === localStorage.getItem(PIN_KEY)){
+        el.lockError.hidden = true;
+        el.lockPinInput.value = '';
+        startAppAfterUnlock();
+      } else {
+        el.lockError.hidden = false;
+        el.lockPinInput.value = '';
+        el.lockPinInput.focus();
+      }
+    });
+  });
+  el.lockPinInput.addEventListener('keydown', function(e){ if(e.key === 'Enter') el.lockUnlockBtn.click(); });
+  el.lockForgotBtn.addEventListener('click', function(){
+    var raw = localStorage.getItem(PIN_HINT_KEY);
+    if(!raw){ showToast('복구 질문이 설정돼 있지 않아요'); return; }
+    var hint = JSON.parse(raw);
+    el.lockHintQuestion.textContent = hint.question;
+    el.lockRecoverPanel.hidden = false;
+    el.lockRecoverAnswer.focus();
+  });
+  el.lockRecoverCancel.addEventListener('click', function(){
+    el.lockRecoverPanel.hidden = true;
+    el.lockRecoverAnswer.value = '';
+  });
+  el.lockRecoverSubmit.addEventListener('click', function(){
+    var answer = el.lockRecoverAnswer.value.trim().toLowerCase();
+    var hint = JSON.parse(localStorage.getItem(PIN_HINT_KEY) || '{}');
+    sha256Hex(answer).then(function(hash){
+      if(hash === hint.answerHash){
+        localStorage.removeItem(PIN_KEY);
+        localStorage.removeItem(PIN_HINT_KEY);
+        el.lockRecoverPanel.hidden = true;
+        el.lockRecoverAnswer.value = '';
+        showToast('비밀번호가 초기화됐어요. 원하시면 새로 설정해주세요');
+        startAppAfterUnlock();
+      } else {
+        showToast('답변이 일치하지 않아요');
+      }
+    });
+  });
 
   // ========== 깃허브 자동 동기화 ==========
   var githubConfig = loadJSON(GITHUB_CONFIG_KEY, null); // {owner, repo, token, path, branch, lastSyncedAt} — 기기별, 동기화 대상 아님
@@ -992,6 +1161,24 @@
     toast: document.getElementById('toast'),
     toastMsg: document.getElementById('toastMsg'),
     toastUndo: document.getElementById('toastUndo'),
+
+    lockOverlay: document.getElementById('lockOverlay'),
+    lockPinInput: document.getElementById('lockPinInput'),
+    lockError: document.getElementById('lockError'),
+    lockUnlockBtn: document.getElementById('lockUnlockBtn'),
+    lockForgotBtn: document.getElementById('lockForgotBtn'),
+    lockRecoverPanel: document.getElementById('lockRecoverPanel'),
+    lockHintQuestion: document.getElementById('lockHintQuestion'),
+    lockRecoverAnswer: document.getElementById('lockRecoverAnswer'),
+    lockRecoverSubmit: document.getElementById('lockRecoverSubmit'),
+    lockRecoverCancel: document.getElementById('lockRecoverCancel'),
+    lockStatus: document.getElementById('lockStatus'),
+    setPinInput: document.getElementById('setPinInput'),
+    setPinConfirm: document.getElementById('setPinConfirm'),
+    setPinHintQ: document.getElementById('setPinHintQ'),
+    setPinHintA: document.getElementById('setPinHintA'),
+    savePinBtn: document.getElementById('savePinBtn'),
+    removePinBtn: document.getElementById('removePinBtn'),
 
     ghOwner: document.getElementById('ghOwner'),
     ghRepo: document.getElementById('ghRepo'),
@@ -2168,6 +2355,7 @@
   renderCategoryChips();
   renderRecurringCategoryOptions();
   refreshCardNameList();
+  updateLockStatus();
 
   function finishStartup(){
     // 앱을 열 때, 결제일이 지난 정기 지출을 자동으로 기록 (건너뛴 달도 한꺼번에 채움)
@@ -2179,7 +2367,11 @@
     render();
   }
 
-  if(githubConfigured()){
+  if(localStorage.getItem(PIN_KEY)){
+    // 비밀번호가 설정돼 있으면 잠금 화면부터 보여주고, 풀리면 그때 동기화·렌더링을 진행한다.
+    el.lockOverlay.hidden = false;
+    el.lockPinInput.focus();
+  } else if(githubConfigured()){
     // 앱을 열 때 깃허브에서 먼저 최신 내용을 받아와 합친 뒤 시작한다.
     syncWithGitHub({ toast: false, rerender: false }).then(finishStartup);
   } else {
