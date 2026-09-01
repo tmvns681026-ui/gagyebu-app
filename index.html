@@ -247,6 +247,19 @@
   }
   .memo-input:focus{outline:2px solid var(--primary);outline-offset:1px;}
 
+  .card-toggle-row{margin-bottom:14px;}
+  .card-toggle-label{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink);cursor:pointer;}
+  .card-toggle-label input[type="checkbox"]{width:16px;height:16px;accent-color:var(--primary);cursor:pointer;flex-shrink:0;}
+  .card-name-input{
+    width:100%;margin-top:8px;border:1px solid var(--line);background:var(--card-tint);border-radius:9px;
+    padding:9px 10px;font-size:13px;font-family:var(--font-body);color:var(--ink-deep);
+  }
+  .card-name-input:focus{outline:2px solid var(--primary);outline-offset:1px;}
+  .entry-card-badge{
+    font-size:10.5px;color:var(--primary-deep);background:var(--primary-soft);border-radius:6px;
+    padding:2px 7px;white-space:nowrap;flex-shrink:0;
+  }
+
   .save-btn{
     width:100%;border:none;border-radius:10px;padding:13px 0;
     background:linear-gradient(135deg, var(--primary-deep), var(--primary));
@@ -517,6 +530,14 @@
       <button type="button" class="confirm-btn" id="newCategoryConfirm">추가</button>
       <button type="button" class="cancel-btn" id="newCategoryCancel">취소</button>
     </div>
+    <div class="card-toggle-row" id="cardToggleRow">
+      <label class="card-toggle-label">
+        <input type="checkbox" id="isCardCheckbox">
+        <span>카드로 결제했어요</span>
+      </label>
+      <input type="text" class="card-name-input" id="cardNameInput" placeholder="카드 이름 (예: 신한카드)" list="cardNameList" hidden>
+    </div>
+    <datalist id="cardNameList"></datalist>
     <input type="text" class="memo-input" id="memoInput" placeholder="메모 (선택)" maxlength="40">
     <div class="edit-banner" id="editBanner" hidden>이 기록을 수정하는 중이에요 <button type="button" id="cancelEditEntry">수정 취소</button></div>
     <button class="save-btn" id="saveBtn">기록 저장</button>
@@ -534,6 +555,13 @@
         <div class="field"><label for="recurringCategory">카테고리</label><select id="recurringCategory"></select></div>
         <div class="field"><label for="recurringAmount">금액</label><input type="number" id="recurringAmount" placeholder="0" min="0"></div>
         <div class="field"><label for="recurringDay">결제일</label><input type="number" id="recurringDay" placeholder="25" min="1" max="31"></div>
+      </div>
+      <div class="card-toggle-row" id="recurringCardToggleRow">
+        <label class="card-toggle-label">
+          <input type="checkbox" id="recurringIsCardCheckbox">
+          <span>카드로 결제돼요</span>
+        </label>
+        <input type="text" class="card-name-input" id="recurringCardNameInput" placeholder="카드 이름 (예: 신한카드)" list="cardNameList" hidden>
       </div>
       <div class="form-actions">
         <button type="button" class="form-cancel-btn" id="recurringCancel">취소</button>
@@ -554,6 +582,15 @@
   <section class="card-section" id="categorySummarySection" hidden>
     <h2>카테고리별 지출</h2>
     <div id="categoryBars"></div>
+  </section>
+
+  <section class="card-section" id="cardUsageSection" hidden>
+    <h2>카드 사용 현황</h2>
+    <div class="bar-top" style="margin-bottom:10px;">
+      <span class="name">이번 달 카드 사용액</span>
+      <span class="amt" id="cardUsageTotalAmt">₩0</span>
+    </div>
+    <div id="cardUsageBars"></div>
   </section>
 
   <section class="card-section">
@@ -842,6 +879,7 @@
         viewYear = today.getFullYear(); viewMonth = today.getMonth();
         renderCategoryChips();
         renderRecurringCategoryOptions();
+        refreshCardNameList();
         render();
       }
     }).catch(function(err){
@@ -909,6 +947,10 @@
     newCategoryConfirm: document.getElementById('newCategoryConfirm'),
     newCategoryCancel: document.getElementById('newCategoryCancel'),
     memoInput: document.getElementById('memoInput'),
+    cardToggleRow: document.getElementById('cardToggleRow'),
+    isCardCheckbox: document.getElementById('isCardCheckbox'),
+    cardNameInput: document.getElementById('cardNameInput'),
+    cardNameList: document.getElementById('cardNameList'),
     editBanner: document.getElementById('editBanner'),
     cancelEditEntry: document.getElementById('cancelEditEntry'),
     saveBtn: document.getElementById('saveBtn'),
@@ -916,6 +958,9 @@
     emptyState: document.getElementById('emptyState'),
     catSection: document.getElementById('categorySummarySection'),
     catBars: document.getElementById('categoryBars'),
+    cardUsageSection: document.getElementById('cardUsageSection'),
+    cardUsageTotalAmt: document.getElementById('cardUsageTotalAmt'),
+    cardUsageBars: document.getElementById('cardUsageBars'),
     compareChart: document.getElementById('compareChart'),
 
     recurringList: document.getElementById('recurringList'),
@@ -926,6 +971,8 @@
     recurringCategory: document.getElementById('recurringCategory'),
     recurringAmount: document.getElementById('recurringAmount'),
     recurringDay: document.getElementById('recurringDay'),
+    recurringIsCardCheckbox: document.getElementById('recurringIsCardCheckbox'),
+    recurringCardNameInput: document.getElementById('recurringCardNameInput'),
     recurringCancel: document.getElementById('recurringCancel'),
     recurringSave: document.getElementById('recurringSave'),
 
@@ -1131,9 +1178,33 @@
       currentType = btn.getAttribute('data-type');
       el.mainTypeToggle.querySelectorAll('button').forEach(function(b){ b.classList.toggle('active', b === btn); });
       el.addCategoryForm.classList.remove('open');
+      el.cardToggleRow.hidden = (currentType !== 'expense');
+      if(currentType !== 'expense'){
+        el.isCardCheckbox.checked = false;
+        el.cardNameInput.hidden = true;
+        el.cardNameInput.value = '';
+      }
       renderCategoryChips();
     });
   });
+
+  el.isCardCheckbox.addEventListener('change', function(){
+    el.cardNameInput.hidden = !el.isCardCheckbox.checked;
+    if(el.isCardCheckbox.checked) el.cardNameInput.focus();
+  });
+  el.recurringIsCardCheckbox.addEventListener('change', function(){
+    el.recurringCardNameInput.hidden = !el.recurringIsCardCheckbox.checked;
+    if(el.recurringIsCardCheckbox.checked) el.recurringCardNameInput.focus();
+  });
+
+  function refreshCardNameList(){
+    var names = {};
+    entries.forEach(function(e){ if(e.cardName) names[e.cardName] = true; });
+    recurring.forEach(function(r){ if(r.cardName) names[r.cardName] = true; });
+    if(el.cardNameList){
+      el.cardNameList.innerHTML = Object.keys(names).sort().map(function(n){ return '<option value="' + escapeHtml(n) + '">'; }).join('');
+    }
+  }
 
   // ---------- month nav ----------
   el.prevMonth.addEventListener('click', function(){
@@ -1180,6 +1251,10 @@
     el.dateInput.value = entry.date;
     el.amountInput.value = entry.amount;
     el.memoInput.value = entry.memo || '';
+    el.cardToggleRow.hidden = (entry.type !== 'expense');
+    el.isCardCheckbox.checked = !!entry.cardName;
+    el.cardNameInput.value = entry.cardName || '';
+    el.cardNameInput.hidden = !entry.cardName;
     renderCategoryChips();
     el.editBanner.hidden = false;
     el.saveBtn.textContent = '수정 저장';
@@ -1191,6 +1266,9 @@
     el.saveBtn.textContent = '기록 저장';
     el.amountInput.value = '';
     el.memoInput.value = '';
+    el.isCardCheckbox.checked = false;
+    el.cardNameInput.value = '';
+    el.cardNameInput.hidden = true;
   }
   el.cancelEditEntry.addEventListener('click', exitEditEntry);
 
@@ -1200,6 +1278,8 @@
     if(!date){ el.dateInput.focus(); return; }
     if(!amount || amount <= 0){ el.amountInput.focus(); return; }
     amount = Math.round(amount);
+    var cardName = (currentType === 'expense' && el.isCardCheckbox.checked)
+      ? (el.cardNameInput.value.trim() || '카드') : null;
 
     if(editingEntryId){
       var entry = entries.find(function(e){ return e.id === editingEntryId; });
@@ -1210,6 +1290,7 @@
         entry.category = selectedCategory;
         entry.memo = el.memoInput.value.trim();
         entry.amount = amount;
+        entry.cardName = cardName;
         entry.updatedAt = Date.now();
         if(entry.depositId && entry.category !== DEPOSIT_CATEGORY && entry.category !== WITHDRAW_CATEGORY){
           entry.depositId = null;
@@ -1220,13 +1301,14 @@
       var d2 = new Date(date + 'T00:00:00');
       viewYear = d2.getFullYear(); viewMonth = d2.getMonth();
       exitEditEntry();
+      refreshCardNameList();
       render();
       return;
     }
 
     entries.push({
       id: newId(), date: date, type: currentType, category: selectedCategory,
-      memo: el.memoInput.value.trim(), amount: amount, createdAt: Date.now(), updatedAt: Date.now()
+      memo: el.memoInput.value.trim(), amount: amount, cardName: cardName, createdAt: Date.now(), updatedAt: Date.now()
     });
     saveJSON(ENTRIES_KEY, entries);
 
@@ -1236,6 +1318,10 @@
 
     el.amountInput.value = '';
     el.memoInput.value = '';
+    el.isCardCheckbox.checked = false;
+    el.cardNameInput.value = '';
+    el.cardNameInput.hidden = true;
+    refreshCardNameList();
     render();
   });
 
@@ -1323,11 +1409,16 @@
     el.recurringForm.classList.add('open');
     renderRecurringCategoryOptions();
     el.recurringDay.value = today.getDate();
+    el.recurringIsCardCheckbox.checked = false;
+    el.recurringCardNameInput.value = '';
+    el.recurringCardNameInput.hidden = true;
     el.recurringName.focus();
   });
   el.recurringCancel.addEventListener('click', function(){
     el.recurringForm.classList.remove('open');
     el.recurringName.value = ''; el.recurringAmount.value = ''; el.recurringDay.value = '';
+    el.recurringIsCardCheckbox.checked = false;
+    el.recurringCardNameInput.value = ''; el.recurringCardNameInput.hidden = true;
   });
   el.recurringSave.addEventListener('click', function(){
     var name = el.recurringName.value.trim();
@@ -1337,11 +1428,15 @@
     if(!name){ el.recurringName.focus(); return; }
     if(!amount || amount <= 0){ el.recurringAmount.focus(); return; }
     if(!day || day < 1 || day > 31) day = today.getDate();
-    recurring.push({ id: newId(), name: name, type: 'expense', category: category, amount: Math.round(amount), day: day, lastRecordedMonth: null, createdAt: Date.now(), updatedAt: Date.now() });
+    var cardName = el.recurringIsCardCheckbox.checked ? (el.recurringCardNameInput.value.trim() || '카드') : null;
+    recurring.push({ id: newId(), name: name, type: 'expense', category: category, amount: Math.round(amount), day: day, cardName: cardName, lastRecordedMonth: null, createdAt: Date.now(), updatedAt: Date.now() });
     saveJSON(RECURRING_KEY, recurring);
     el.recurringName.value = ''; el.recurringAmount.value = ''; el.recurringDay.value = '';
+    el.recurringIsCardCheckbox.checked = false;
+    el.recurringCardNameInput.value = ''; el.recurringCardNameInput.hidden = true;
     el.recurringForm.classList.remove('open');
     autoRecordRecurring(false);
+    refreshCardNameList();
     viewYear = today.getFullYear(); viewMonth = today.getMonth();
     render();
   });
@@ -1351,7 +1446,7 @@
     var count = 0;
     recurring.forEach(function(r){
       pendingOccurrences(r, mid).forEach(function(o){
-        entries.push({ id: newId(), date: o.year + '-' + pad(o.month+1) + '-' + pad(o.day), type: 'expense', category: r.category, memo: r.name, amount: r.amount, createdAt: Date.now(), updatedAt: Date.now(), auto: true, recurringId: r.id });
+        entries.push({ id: newId(), date: o.year + '-' + pad(o.month+1) + '-' + pad(o.day), type: 'expense', category: r.category, memo: r.name, amount: r.amount, cardName: r.cardName || null, createdAt: Date.now(), updatedAt: Date.now(), auto: true, recurringId: r.id });
         r.lastRecordedMonth = o.monthKey;
         r.updatedAt = Date.now();
         count++;
@@ -1404,32 +1499,34 @@
         monthEntry.category = fields.category;
         monthEntry.memo = fields.name;
         monthEntry.amount = fields.amount;
+        monthEntry.cardName = fields.cardName;
         monthEntry.updatedAt = Date.now();
       } else {
-        entries.push({ id: newId(), date: todayStr(), type: 'expense', category: fields.category, memo: fields.name, amount: fields.amount, createdAt: Date.now(), updatedAt: Date.now(), auto: true, recurringId: r.id });
+        entries.push({ id: newId(), date: todayStr(), type: 'expense', category: fields.category, memo: fields.name, amount: fields.amount, cardName: fields.cardName, createdAt: Date.now(), updatedAt: Date.now(), auto: true, recurringId: r.id });
       }
       r.lastRecordedMonth = realMonth;
       r.updatedAt = Date.now();
       saveJSON(ENTRIES_KEY, entries);
       saveJSON(RECURRING_KEY, recurring);
     } else if(scope === 'thisAndFuture'){
-      r.name = fields.name; r.category = fields.category; r.amount = fields.amount; r.day = fields.day;
+      r.name = fields.name; r.category = fields.category; r.amount = fields.amount; r.day = fields.day; r.cardName = fields.cardName;
       r.updatedAt = Date.now();
       if(monthEntry){
         monthEntry.category = fields.category;
         monthEntry.memo = fields.name;
         monthEntry.amount = fields.amount;
+        monthEntry.cardName = fields.cardName;
         monthEntry.updatedAt = Date.now();
         saveJSON(ENTRIES_KEY, entries);
       }
       saveJSON(RECURRING_KEY, recurring);
     } else { // 'all' — 과거 기록까지 전부
-      r.name = fields.name; r.category = fields.category; r.amount = fields.amount; r.day = fields.day;
+      r.name = fields.name; r.category = fields.category; r.amount = fields.amount; r.day = fields.day; r.cardName = fields.cardName;
       r.updatedAt = Date.now();
       var changed = false;
       entries.forEach(function(e){
         if(e.recurringId === r.id){
-          e.category = fields.category; e.memo = fields.name; e.amount = fields.amount; e.updatedAt = Date.now();
+          e.category = fields.category; e.memo = fields.name; e.amount = fields.amount; e.cardName = fields.cardName; e.updatedAt = Date.now();
           changed = true;
         }
       });
@@ -1437,6 +1534,7 @@
       saveJSON(RECURRING_KEY, recurring);
     }
     closeRecurringPanel();
+    refreshCardNameList();
     viewYear = today.getFullYear(); viewMonth = today.getMonth();
     render();
   }
@@ -1501,6 +1599,10 @@
               '<div class="field"><label>금액</label><input type="number" id="rpAmount" value="' + r.amount + '" min="0"></div>' +
               '<div class="field"><label>결제일</label><input type="number" id="rpDay" value="' + (r.day||1) + '" min="1" max="31"></div>' +
             '</div>' +
+            '<div class="card-toggle-row">' +
+              '<label class="card-toggle-label"><input type="checkbox" id="rpIsCard"' + (r.cardName ? ' checked' : '') + '><span>카드로 결제돼요</span></label>' +
+              '<input type="text" class="card-name-input" id="rpCardName" placeholder="카드 이름 (예: 신한카드)" list="cardNameList" value="' + escapeHtml(r.cardName || '') + '"' + (r.cardName ? '' : ' hidden') + '>' +
+            '</div>' +
             '<p class="section-hint" style="margin-bottom:8px;">적용 범위를 고르세요. 관리비처럼 이번 달만 금액이 다르면 "이번 달만"을 고르세요.</p>' +
             '<div class="scope-select" id="rpScope">' +
               '<button type="button" data-scope="thisMonth" class="active">이번 달만</button>' +
@@ -1520,15 +1622,22 @@
             row.querySelectorAll('#rpScope button').forEach(function(x){ x.classList.toggle('active', x === b); });
           });
         });
+        row.querySelector('#rpIsCard').addEventListener('change', function(){
+          var cardInput = row.querySelector('#rpCardName');
+          cardInput.hidden = !this.checked;
+          if(this.checked) cardInput.focus();
+        });
         row.querySelector('#rpCancel').addEventListener('click', function(){ closeRecurringPanel(); renderRecurring(); });
         row.querySelector('#rpSave').addEventListener('click', function(){
           var name = row.querySelector('#rpName').value.trim();
           var category = row.querySelector('#rpCategory').value;
           var amount = parseFloat(row.querySelector('#rpAmount').value);
           var day = parseInt(row.querySelector('#rpDay').value, 10);
+          var isCard = row.querySelector('#rpIsCard').checked;
+          var cardName = isCard ? (row.querySelector('#rpCardName').value.trim() || '카드') : null;
           if(!name || !amount || amount <= 0){ return; }
           if(!day || day < 1 || day > 31) day = r.day || 1;
-          applyRecurringEditScope(r, { name: name, category: category, amount: Math.round(amount), day: day }, scopeSel);
+          applyRecurringEditScope(r, { name: name, category: category, amount: Math.round(amount), day: day, cardName: cardName }, scopeSel);
         });
         return;
       }
@@ -1554,7 +1663,7 @@
       row.innerHTML =
         '<span class="dot" style="background:' + color + '"></span>' +
         '<span class="i-main"><span class="i-name"><span class="label-text">' + escapeHtml(r.name) + '</span><button type="button" class="edit-btn" data-edit="' + r.id + '">✎</button></span>' +
-        '<span class="i-meta">' + escapeHtml(r.category) + ' · 매월 ' + (r.day || 1) + '일</span></span>' +
+        '<span class="i-meta">' + escapeHtml(r.category) + ' · 매월 ' + (r.day || 1) + '일' + (r.cardName ? ' · 💳 ' + escapeHtml(r.cardName) : '') + '</span></span>' +
         '<span class="i-amount">' + fmtWon(r.amount) + '</span>' +
         '<button type="button" class="i-action' + (done ? ' done' : '') + '" data-id="' + r.id + '">' + (done ? '기록됨 ✓' : '지금 기록') + '</button>' +
         '<button type="button" class="i-del" data-del="' + r.id + '">✕</button>';
@@ -1580,7 +1689,7 @@
           renderRecurring();
           return;
         }
-        entries.push({ id: newId(), date: todayStr(), type: 'expense', category: r.category, memo: r.name, amount: r.amount, createdAt: Date.now(), updatedAt: Date.now(), auto: true, recurringId: r.id });
+        entries.push({ id: newId(), date: todayStr(), type: 'expense', category: r.category, memo: r.name, amount: r.amount, cardName: r.cardName || null, createdAt: Date.now(), updatedAt: Date.now(), auto: true, recurringId: r.id });
         r.lastRecordedMonth = realMonth;
         r.updatedAt = Date.now();
         saveJSON(ENTRIES_KEY, entries);
@@ -1841,9 +1950,11 @@
           var row = document.createElement('div');
           row.className = 'entry-row';
           var sign = e.type === 'income' ? '+' : '-';
+          var cardBadge = e.cardName ? '<span class="entry-card-badge">💳 ' + escapeHtml(e.cardName) + '</span>' : '';
           row.innerHTML =
             '<span class="entry-cat" style="background:' + color + '22;color:' + color + '"><span class="dot" style="background:' + color + '"></span>' + escapeHtml(e.category) + '</span>' +
             '<span class="entry-memo">' + (e.memo ? escapeHtml(e.memo) : '<span style="color:#C7BED2;">메모 없음</span>') + '</span>' +
+            cardBadge +
             '<span class="entry-right">' +
               '<span class="entry-amount ' + e.type + '">' + sign + fmtWon(e.amount) + '</span>' +
               '<span class="entry-balance">잔액 ' + fmtWon(balanceMap[e.id]) + '</span>' +
@@ -1886,6 +1997,35 @@
           '<div class="bar-track"><div class="bar-fill" style="width:' + Math.max(4, (c.amount/max*100)) + '%;background:' + color + '"></div></div>';
         el.catBars.appendChild(row);
       });
+    }
+
+    // 카드 사용 현황 (이번에 보는 달 기준, 카드로 표기된 지출만)
+    var cardTotals = {};
+    monthEntries.forEach(function(e){
+      if(e.type === 'expense' && e.cardName){
+        cardTotals[e.cardName] = (cardTotals[e.cardName] || 0) + e.amount;
+      }
+    });
+    var cardNames = Object.keys(cardTotals);
+    if(cardNames.length === 0){
+      el.cardUsageSection.hidden = true;
+    } else {
+      el.cardUsageSection.hidden = false;
+      var cardTotalSum = cardNames.reduce(function(s, n){ return s + cardTotals[n]; }, 0);
+      el.cardUsageTotalAmt.textContent = fmtWon(cardTotalSum);
+      el.cardUsageBars.innerHTML = '';
+      if(cardNames.length > 1){
+        var cardMax = Math.max.apply(null, cardNames.map(function(n){ return cardTotals[n]; }));
+        cardNames.sort(function(a, b){ return cardTotals[b] - cardTotals[a]; }).forEach(function(n){
+          var color = categoryColor(n);
+          var row = document.createElement('div');
+          row.className = 'bar-row';
+          row.innerHTML =
+            '<div class="bar-top"><span class="name"><span class="dot" style="background:' + color + '"></span>' + escapeHtml(n) + '</span><span class="amt">' + fmtWon(cardTotals[n]) + '</span></div>' +
+            '<div class="bar-track"><div class="bar-fill" style="width:' + Math.max(4, (cardTotals[n]/cardMax*100)) + '%;background:' + color + '"></div></div>';
+          el.cardUsageBars.appendChild(row);
+        });
+      }
     }
 
     renderCompareChart();
@@ -2021,11 +2161,13 @@
     viewYear = today.getFullYear(); viewMonth = today.getMonth();
     renderCategoryChips();
     renderRecurringCategoryOptions();
+    refreshCardNameList();
     render();
   });
 
   renderCategoryChips();
   renderRecurringCategoryOptions();
+  refreshCardNameList();
 
   function finishStartup(){
     // 앱을 열 때, 결제일이 지난 정기 지출을 자동으로 기록 (건너뛴 달도 한꺼번에 채움)
